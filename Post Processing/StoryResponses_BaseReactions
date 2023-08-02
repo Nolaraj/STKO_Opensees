@@ -96,7 +96,7 @@ class Worker(QObject):
 
             # evaluate all results for each stage
             num_steps = len(all_steps)
-            for step_counter in range(200, 220):
+            for step_counter in range(num_steps):
 
                 # get step id and time
                 step_id = all_steps[step_counter]
