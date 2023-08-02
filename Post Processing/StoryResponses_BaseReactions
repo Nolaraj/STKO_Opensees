@@ -59,6 +59,11 @@ class Worker(QObject):
             RotationX = []
             RotationY = []
             RotationZ = []
+            Uz_Max = []
+            Uz_Max_Node = []
+            Uz_Min = []
+            Uz_Min_Node = []
+
 
 
 
@@ -123,7 +128,6 @@ class Worker(QObject):
                     print(sortedDiaphragm)
 
                     # open the files for the recorders
-                    Drift_sp_file = open('Drift_sp_stko.txt', 'w+')
 
                     for i in range(len(sortedDiaphragm) - 1):
                         Drift_sp_target_i.append(sortedDiaphragm[i])
@@ -191,7 +195,7 @@ class Worker(QObject):
 
 
 
-                # Base Reactions
+                # Base Reactions and Deformations
                 i_Rx = 0
                 i_Ry = 0
                 i_Mx = 0
@@ -199,6 +203,10 @@ class Worker(QObject):
                 i_Rox = 0
                 i_Roy = 0
                 i_Roz = 0
+                i_Uz_Max = 0
+                i_Uz_Max_Node = ""
+                i_Uz_Min = 0
+                i_Uz_Min_Node = ""
                 for node_counter in range(len(BaseNodes)):
                     i_node_id = BaseNodes[node_counter]
                     i_row = MpcOdbResultField.node(i_node_id)
@@ -221,6 +229,27 @@ class Worker(QObject):
                     i_Roy += rotation_field[i_row, 1]
                     i_Roz += rotation_field[i_row, 2]
 
+                    # Base Movements
+
+                    if i_Uz_Max < displacement_field[i_row, 2]:
+                        i_Uz_Max = displacement_field[i_row, 2]
+
+                        i_Px = displacement_field.mesh.getNode(i_node_id).position.x
+                        i_Py = displacement_field.mesh.getNode(i_node_id).position.y
+                        i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
+                        i_Uz_Max_Node = "X_" + str(i_Px) + " Y_" + str(i_Py) + " Z_" + str(i_Pz)
+
+
+                    if i_Uz_Min > displacement_field[i_row, 2]:
+                        i_Uz_Min = displacement_field[i_row, 2]
+
+                        i_Px = displacement_field.mesh.getNode(i_node_id).position.x
+                        i_Py = displacement_field.mesh.getNode(i_node_id).position.y
+                        i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
+                        i_Uz_Min_Node = "X_" + str(i_Px) + " Y_" + str(i_Py) + " Z_" + str(i_Pz)
+
+
+
 
 
                 #Record Keeper
@@ -232,6 +261,10 @@ class Worker(QObject):
                 RotationY.append(i_Roy/len(BaseNodes))
                 RotationZ.append(i_Roz/len(BaseNodes))
 
+                Uz_Max.append(i_Uz_Max)
+                Uz_Max_Node.append(i_Uz_Max_Node)
+                Uz_Min.append(i_Uz_Min)
+                Uz_Min_Node.append(i_Uz_Min_Node)
 
 
 
@@ -244,17 +277,23 @@ class Worker(QObject):
 
 
 
+
+
+
+            def AbsouluteList(Data):
+                value = [abs(ele) for ele in Data]
+                return value
 
 
             #Data Processing Section
             #Drifts
             DriftX = []
             for key, value in all_driftsX.items():
-                DriftX.append(max(value))
+                DriftX.append(max(AbsouluteList(value)))
 
             DriftY = []
             for key, value in all_driftsY.items():
-                DriftY.append(max(value))
+                DriftY.append(max(AbsouluteList(value)))
 
 
             #Displacements
@@ -262,21 +301,33 @@ class Worker(QObject):
             RefDispX = all_dispX[0]
             for key, value in all_dispX.items():
                 RelDispX = [a - b for a,b in zip(value, RefDispX)]
-                DisplacementX.append(max(RelDispX))
+                DisplacementX.append(max(AbsouluteList(RelDispX)))
 
             DisplacementY = []
             RefDispY = all_dispY[0]
             for key, value in all_dispY.items():
                 RelDispY = [a - b for a,b in zip(value, RefDispY)]
-                DisplacementY.append(max(RelDispY))
+                DisplacementY.append(max(AbsouluteList(RelDispY)))
 
 
-            print(DriftX, DriftY, DisplacementY, DisplacementX)
+            #Uplifts and Settlements
+            Max_Uplift = max(Uz_Max)
+            Max_Uplift_index = Uz_Max.index(Max_Uplift)
+            Max_Uplift_Point = Uz_Max_Node[Max_Uplift_index]
+
+            Max_Settlement = min(Uz_Min)
+            Max_Settlement_index = Uz_Min.index(Max_Settlement)
+            Max_Settlement_Point = Uz_Min_Node[Max_Settlement_index]
+
+
+
 
 
             # Txt Writer
             Titles = ["Drift X", "Drift Y", "Displacement X", "Displacement Y", "Reaction Force X", "Reaction Force Y",
-                      "Reaction Moment X", "Reaction Moment Y", "Rocking Angle X", "Rocking Angle Y", "Rocking Angle Z"]
+                      "Reaction Moment X", "Reaction Moment Y", "Rocking Angle X", "Rocking Angle Y", "Rocking Angle Z",
+                      "Max Uplift", "Max Uplift Point", "Max Settlement", "Max Settlement Point"
+                      ]
             for index, value in enumerate(DriftX):
                 Items = [str(DriftX[index]), str(DriftY[index]), str(DisplacementX[index]), str(DisplacementY[index])]
 
@@ -284,20 +335,17 @@ class Worker(QObject):
                     Drift_sp_file.write('\t'.join(Titles))
                     Drift_sp_file.write('\n')
 
-                    Items.append( str(max(BaseReactionX)))
-                    Items.append( str(max(BaseReactionY) ))
-                    Items.append( str(max(BaseMomentX) ))
-                    Items.append( str(max( BaseMomentY)))
-                    Items.append(str(max(RotationX)))
-                    Items.append(str(max(RotationY)))
-                    Items.append(str(max(RotationZ)))
-
-
-                    print(max(BaseReactionX))
-                    print(max(BaseReactionY) )
-                    print(max(BaseMomentX) )
-                    print(max( BaseMomentY))
-
+                    Items.append( str(max(AbsouluteList(BaseReactionX))))
+                    Items.append( str(max(AbsouluteList(BaseReactionY)) ))
+                    Items.append( str(max(AbsouluteList(BaseMomentX)) ))
+                    Items.append( str(max( AbsouluteList(BaseMomentY))))
+                    Items.append(str(max(AbsouluteList(RotationX))))
+                    Items.append(str(max(AbsouluteList(RotationY))))
+                    Items.append(str(max(AbsouluteList(RotationZ))))
+                    Items.append(str(Max_Uplift))
+                    Items.append(str(Max_Uplift_Point))
+                    Items.append(str(Max_Settlement))
+                    Items.append(str(Max_Settlement_Point))
 
 
 
