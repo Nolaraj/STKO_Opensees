@@ -66,11 +66,6 @@ class Worker(QObject):
 
 
 
-
-            # open the files for the recorders
-            Drift_sp_file = open(f'{FileName}.txt', 'w+')
-
-
             # get all the results that we need to reproduce the recorders
             # you wrote manually in OpenSees.
             #
@@ -324,6 +319,9 @@ class Worker(QObject):
 
 
             # Txt Writer
+            # open the files for the recorders
+            Drift_sp_file = open(f'{FileName}.txt', 'w+')
+
             Titles = ["Drift X", "Drift Y", "Displacement X", "Displacement Y", "Reaction Force X", "Reaction Force Y",
                       "Reaction Moment X", "Reaction Moment Y", "Rocking Angle X", "Rocking Angle Y", "Rocking Angle Z",
                       "Max Uplift", "Max Uplift Point", "Max Settlement", "Max Settlement Point"
