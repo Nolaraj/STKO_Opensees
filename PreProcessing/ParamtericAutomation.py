@@ -19,17 +19,15 @@ solver_command = App.currentSolverCommand()
 # Available Names = [S, L1, L2, L3, L4, R]
 Building_Nmae = "L3"
 
-Soil_Paramters = {"Soft": [1.61, 37476, 112429, 29.4, 0.1, 6.7, 100, 0.0]}
-#    ,
-# "Medium" : [7,8,5,5,8,5,5,9],
-# "Soft" : [7,2,3,6,9,8,5,7]
-# }
+Soil_Paramters = {"Soft": [1.61, 37476, 112429, 29.4, 0.1, 6.7, 100, 0.0] ,
+"Medium" : [1.6, 43029, 129089, 39.2, 0.1, 35.5, 100, 0.0],
+"Hard" : [1.6, 64649, 193949, 49.0, 0.1, 17, 100, 0.0]
+}
 
-Earthquake_Paramters = {"Gorkha": [11],
-                        "Northridge": [13]}
-#     ,
-# "San Fernando" : [7]
-# }
+Earthquake_Paramters = {"Gorkha": [11, 8075, 40.375],
+                        "Northridge": [13, 2000, 20],
+                        "San Fernando" : [7, 4000, 20]
+}
 
 
 Soil1ID = 21
@@ -39,12 +37,12 @@ UniformExcID = 27
 monitorTopID = 28
 monitorBottomID = 29
 RecorderID = 2
-
+TrainsientAID = 30
 
 # For Analyze Only the MainPathFile should contains folder containg Main.tcl file and Script had been properly written
 WriteScriptQ = True
 status_interval = 5
-AnalyzeQ = True
+AnalyzeQ = False
 MainPathFile = "Main_Path"
 
 SoilPara = doc.getPhysicalProperty(Soil1ID)
@@ -52,7 +50,7 @@ UniformEXc = doc.getAnalysisStep(UniformExcID)
 monitorTop = doc.getAnalysisStep(monitorTopID)
 monitorBottom = doc.getAnalysisStep(monitorBottomID)
 Recorder = doc.getAnalysisStep(RecorderID)
-
+TransientAnalysis = doc.getAnalysisStep(TrainsientAID)
 
 def ScriptWriter():
     Input_Files = []
@@ -74,6 +72,12 @@ def ScriptWriter():
             # Earthquake Changes
             UniformEXc.XObject.getAttribute("tsTag").index = EqValues[0]
             UniformEXc.commitXObjectChanges()
+
+            #Transient Analysis Step Changes
+            TransientAnalysis.XObject.getAttribute("numIncr").integer = EqValues[1]
+            TransientAnalysis.XObject.getAttribute("duration/transient").real = EqValues[2]
+            TransientAnalysis.commitXObjectChanges()
+
 
             # Monitor Update
             monitorTop.XObject.getAttribute("Use Custom Name").boolean = True
@@ -180,3 +184,5 @@ if __name__ == '__main__':
         Analyze()
     else:
         print("Nothing is performed ")
+
+
