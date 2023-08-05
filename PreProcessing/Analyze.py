@@ -1,3 +1,6 @@
+
+'''This code is preferred over the Parametric code as it efficiently captures the cmd responses and prevents for the STKO GUI Freezing type of inconvenience'''
+
 import subprocess
 import time
 import os
