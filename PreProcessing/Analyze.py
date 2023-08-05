@@ -9,7 +9,7 @@ from tkinter import filedialog
 
 
 status_interval = 5
-
+CompletedFile = "DoneAnalysis.txt"
 
 def open_file_dialog():
     root = tk.Tk()
@@ -22,9 +22,9 @@ def open_file_dialog():
 
     return file_path
 
-MainPathFile = open_file_dialog()
-
-def monitor_process(command, interval, index = 1):
+def RunCMD(command, interval, index = 1):
+    Item = command[0]
+    command[0] = f'cd {Item}'
     full_command = ' & '.join(command)
 
     process = subprocess.Popen(
@@ -52,40 +52,62 @@ def monitor_process(command, interval, index = 1):
             time.sleep(interval)
 
 
-        print(process.poll(), "Completed Successfully")
-        time.sleep(interval)
+        print("Completed Successfully")
+        DoneFile.write(Item)
+        DoneFile.write("\n")
 
 
     except KeyboardInterrupt:
         # Handle keyboard interrupt (e.g., Ctrl+C)
         print("Monitoring interrupted.")
 
+def PathRefiner(List):
+    Paths = []
+    for Item in List:
+        Item = Item.split("\n")
+
+        path = r""
+        for i in Item:
+            path = os.path.join(path, i)
+        Paths.append(path)
+    return Paths
+
+
+
+
 def Analyze():
     # Launcher_File = "LaunchSTKOMonitor.bat"
 
     Paths_File = open(f'{MainPathFile}', "r")
     Input_Files = Paths_File.readlines()
+    Paths = PathRefiner(Input_Files)
 
-    # Running for the process
-    # Input_Files = [Input_Files[0]]
-    for index, Item in enumerate(Input_Files):
-        # Running for Laucnher
-        Item = Item.split("\n")
-        print(Item)
 
-        path = r""
-        for i in Item:
-            path = os.path.join(path, i)
-        Item = path
+    for index, Item in enumerate(Paths):
+        if Item not in DonePaths:
+            command_to_run = [
+                Item ,
+                'dir',
+                'C:\OpenSees-Solvers\openseesmp.bat .\main.tcl 4'
+            ]
 
-        command_to_run = [
-            f'cd {Item}',
-            'dir',
-            'C:\OpenSees-Solvers\openseesmp.bat .\main.tcl 4'
-        ]
+            RunCMD(command_to_run, status_interval, index=index + 1)
 
-        monitor_process(command_to_run, status_interval, index=index + 1)
 
 
 if __name__ == '__main__':
+    MainPathFile = open_file_dialog()
+
+    FolderPath = os.path.dirname(MainPathFile)
+    AnalysisDonePath = os.path.join(FolderPath, CompletedFile)
+    DonePaths = []
+    if os.path.exists(AnalysisDonePath):
+        file1 = open(AnalysisDonePath, "r")
+        Input_Files = file1.readlines()
+        DonePaths = PathRefiner(Input_Files)
+        file1.close()
+
+    DoneFile = open(AnalysisDonePath, "a")
+
     Analyze()
+    DoneFile.close()
