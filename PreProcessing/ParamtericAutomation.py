@@ -40,13 +40,11 @@ monitorTopID = 28
 monitorBottomID = 29
 RecorderID = 2
 
-WriteScriptAndAnalyze = False
-WriteScriptOnly = True
 
-# For Analyze Only, Script must had been properly written and MainPathFile should contains path of folder containing Main.tcl file.
-# It is advised to use WriteScript = True on STKo and perform Analyze from Python Interpreter using code of file Analyze.py along this file
+# For Analyze Only the MainPathFile should contains folder containg Main.tcl file and Script had been properly written
+WriteScriptQ = True
 status_interval = 5
-AnalyzeOnly = False
+AnalyzeQ = True
 MainPathFile = "Main_Path"
 
 SoilPara = doc.getPhysicalProperty(Soil1ID)
@@ -176,12 +174,9 @@ def Analyze():
 
 
 if __name__ == '__main__':
-    if WriteScriptAndAnalyze:
+    if WriteScriptQ:
         ScriptWriter()
-        Analyze()
-    elif WriteScriptOnly:
-        ScriptWriter()
-    elif AnalyzeOnly:
+    elif AnalyzeQ:
         Analyze()
     else:
         print("Nothing is performed ")
