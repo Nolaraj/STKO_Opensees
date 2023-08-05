@@ -1,16 +1,33 @@
 import subprocess
 import time
 import os
+import tkinter as tk
+from tkinter import filedialog
 
-MainPathFile = "Main_Path"
+
 status_interval = 5
 
+
+def open_file_dialog():
+    root = tk.Tk()
+    root.withdraw()
+
+    file_path = filedialog.askopenfilename(
+        title="Select a .txt file containng path of all script folder",
+        filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+    )
+
+    return file_path
+
+MainPathFile = open_file_dialog()
 
 def monitor_process(command, interval, index = 1):
     full_command = ' & '.join(command)
 
     process = subprocess.Popen(
-        ['start', 'cmd', '/c', full_command],  # Use the 'start' command to open a new command prompt window
+        ['start', 'cmd', '/c', full_command],
+        # Use the 'start' command to open a new command prompt window
+        # /c automatically closes the window after task finished. (/k doesnot automatically closes)
         shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -31,6 +48,7 @@ def monitor_process(command, interval, index = 1):
             # Wait for the specified interval
             time.sleep(interval)
 
+
         print(process.poll(), "Completed Successfully")
         time.sleep(interval)
 
@@ -39,12 +57,10 @@ def monitor_process(command, interval, index = 1):
         # Handle keyboard interrupt (e.g., Ctrl+C)
         print("Monitoring interrupted.")
 
-
-
 def Analyze():
     # Launcher_File = "LaunchSTKOMonitor.bat"
 
-    Paths_File = open(f'{MainPathFile}.txt', "r")
+    Paths_File = open(f'{MainPathFile}', "r")
     Input_Files = Paths_File.readlines()
 
     # Running for the process
@@ -68,4 +84,5 @@ def Analyze():
         monitor_process(command_to_run, status_interval, index=index + 1)
 
 
-Analyze()
+if __name__ == '__main__':
+    Analyze()
