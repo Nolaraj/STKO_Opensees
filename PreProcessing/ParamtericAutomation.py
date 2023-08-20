@@ -17,57 +17,85 @@ if not App.hasCurrentSolver():
 solver_command = App.currentSolverCommand()
 
 # Available Names = [S, L1, L2, L3, L4, R]
-Building_Nmae = "L3"
+Building_Name = "R"
 
-Soil_Paramters = {"Soft": [1.61, 37476, 112429, 29.4, 0.1, 6.7, 100, 0.0] ,
-"Medium" : [1.6, 43029, 129089, 39.2, 0.1, 35.5, 100, 0.0],
-"Hard" : [1.6, 64649, 193949, 49.0, 0.1, 17, 100, 0.0]
+Soil_Parameters_Soft = {"Layer1": [1.83, 65352, 196056, 42, 0.35, 0, 100, 0.0] ,
+"Layer2" : [1.83, 69883, 209649, 42, 0.35, 0, 100, 0.0],
+"Layer3" : [1.83, 133396, 400189, 100, 0.35, 0, 100, 0.0]
 }
 
-Earthquake_Paramters = {"Gorkha": [11, 8075, 40.375],
-                        "Northridge": [13, 2000, 20],
-                        "San Fernando" : [7, 4000, 20]
+Soil_Parameters_Medium = {"Layer1": [1.79, 55195, 165586, 38, 0.35, 0, 100, 0.0] ,
+"Layer2" : [1.81, 95811, 287435, 38, 0.35, 0, 100, 0.0],
+"Layer3" : [1.81, 133396, 400189, 100, 0.35, 0, 100, 0.0]
 }
 
+Soil_Parameters_Hard = {"Layer1": [1.69, 78895, 236686, 17, 0.35, 24, 100, 0.0] ,
+"Layer2" : [1.97, 152818, 458456, 17, 0.35, 32, 100, 0.0],
+"Layer3" : [1.92, 188263, 564790, 100, 0.35, 32, 100, 0.0]}
 
-Soil1ID = 21
-# Soil2ID =
-# SOil3ID =
-UniformExcID = 27
-monitorTopID = 28
-monitorBottomID = 29
+
+Soil_Name = ["Soft", "Medium", "Hard"]
+Soils = [Soil_Parameters_Soft, Soil_Parameters_Medium, Soil_Parameters_Hard]
+
+Earthquake_Parameters = {"Gorkha": [9, 4000, 20],
+                        "Northridge": [7, 1500, 15],
+                         "San Fernando" : [8, 4000, 20]
+ }
+
+
+
+
+Soil1ID = 2
+Soil2ID = 3
+SOil3ID = 4
+SoilIDs = [Soil1ID, Soil2ID, SOil3ID]
+UniformExcID = 10
+monitorTopID = 11
+monitorBottomID = 12
 RecorderID = 2
-TrainsientAID = 30
+TrainsientAID = 13
 
 # For Analyze Only the MainPathFile should contains folder containg Main.tcl file and Script had been properly written
 WriteScriptQ = True
-status_interval = 5
 AnalyzeQ = False
-MainPathFile = "Main_Path"
+status_interval = 5
+MainPathFile = "FilePaths"
 
-SoilPara = doc.getPhysicalProperty(Soil1ID)
+# SoilPara = doc.getPhysicalProperty(Soil1ID)
+# SoilPara = doc.getPhysicalProperty(Soil2ID)
+# SoilPara = doc.getPhysicalProperty(SOil3ID)
+
 UniformEXc = doc.getAnalysisStep(UniformExcID)
 monitorTop = doc.getAnalysisStep(monitorTopID)
 monitorBottom = doc.getAnalysisStep(monitorBottomID)
 Recorder = doc.getAnalysisStep(RecorderID)
 TransientAnalysis = doc.getAnalysisStep(TrainsientAID)
 
-def ScriptWriter():
-    Input_Files = []
-    for SName, Svalues in Soil_Paramters.items():
-        for EqName, EqValues in Earthquake_Paramters.items():
 
-            # SOil Parameters Udpate
-            SoilPara.XObject.getAttribute("rho").quantityScalar.value = Svalues[0]
-            SoilPara.XObject.getAttribute("refShearModul").quantityScalar.value = Svalues[1]
-            SoilPara.XObject.getAttribute("refBulkModul").quantityScalar.value = Svalues[2]
-            SoilPara.XObject.getAttribute("cohesi").quantityScalar.value = Svalues[3]
-            SoilPara.XObject.getAttribute("peakShearStra").real = Svalues[4]
-            SoilPara.XObject.getAttribute("Optional").boolean = True
-            SoilPara.XObject.getAttribute("frictionAng").real = Svalues[5]
-            SoilPara.XObject.getAttribute("refPress").quantityScalar.value = Svalues[6]
-            SoilPara.XObject.getAttribute("pressDependCoe").real = Svalues[7]
-            SoilPara.commitXObjectChanges()
+
+def ScriptWriter():
+    fileIndex = 1
+    Input_Files = []
+    for EqName, EqValues in Earthquake_Parameters.items():
+        for soilIndex, soil in enumerate(Soils):
+            SName = Soil_Name[soilIndex]
+
+            i = 0
+            for LName, Svalues in soil.items():
+                SoilPara = doc.getPhysicalProperty(SoilIDs[i])
+
+                # SOil Parameters Udpate
+                SoilPara.XObject.getAttribute("rho").quantityScalar.value = Svalues[0]
+                SoilPara.XObject.getAttribute("refShearModul").quantityScalar.value = Svalues[1]
+                SoilPara.XObject.getAttribute("refBulkModul").quantityScalar.value = Svalues[2]
+                SoilPara.XObject.getAttribute("cohesi").quantityScalar.value = Svalues[3]
+                SoilPara.XObject.getAttribute("peakShearStra").real = Svalues[4]
+                SoilPara.XObject.getAttribute("Optional").boolean = True
+                SoilPara.XObject.getAttribute("frictionAng").real = Svalues[5]
+                SoilPara.XObject.getAttribute("refPress").quantityScalar.value = Svalues[6]
+                SoilPara.XObject.getAttribute("pressDependCoe").real = Svalues[7]
+                SoilPara.commitXObjectChanges()
+                i += 1
 
             # Earthquake Changes
             UniformEXc.XObject.getAttribute("tsTag").index = EqValues[0]
@@ -89,7 +117,7 @@ def ScriptWriter():
             monitorBottom.commitXObjectChanges()
 
             # Recorder Update
-            Recorder.XObject.getAttribute("name").string = f"{Building_Nmae}_{SName}_{EqName}"
+            Recorder.XObject.getAttribute("name").string = f"{Building_Name}_{SName}_{EqName}"
             Recorder.commitXObjectChanges()
 
             # Commissioning of Changes
@@ -99,7 +127,7 @@ def ScriptWriter():
             App.processEvents()
 
             # Creating Directory
-            FolderPath = os.path.join(os.getcwd(), Building_Nmae, SName, EqName)
+            FolderPath = os.path.join(os.getcwd(), Building_Name, EqName, SName)
             if os.path.exists(FolderPath) is False:
                 os.makedirs(FolderPath)
 
@@ -107,11 +135,17 @@ def ScriptWriter():
             write_tcl(FolderPath)
             Input_Files.append(FolderPath)
 
+            print(f"File No {fileIndex} has successfully been written")
+            fileIndex += 1
+
     # Writing the text file for future
-    Paths_File = open(f'{MainPathFile}.txt', 'w+')
+    txtPath = os.path.join(os.getcwd(), f'{MainPathFile}.txt')
+    Paths_File = open(txtPath, 'a')
     for path in Input_Files:
         Paths_File.write(path)
         Paths_File.write('\n')
+
+
 
 
 
