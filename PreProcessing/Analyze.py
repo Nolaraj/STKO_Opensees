@@ -1,4 +1,4 @@
-
+"""It needs to be opened from code editor like Pycharm. It maynot work smoothly with the STKO terminal"""
 '''This code is preferred over the Parametric code as it efficiently captures the cmd responses and prevents for the STKO GUI Freezing type of inconvenience'''
 
 import subprocess
