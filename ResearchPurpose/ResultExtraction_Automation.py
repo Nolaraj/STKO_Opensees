@@ -8,7 +8,6 @@ import os
 use_dialog = True  # True = Dialog, False = Event Loop
 
 
-# App.runCommand("OpenDatabase", "C:/VBShared/di_michele/micro_inplane.mpco")
 
 class QBlockingSlot(QObject):
     requestCall = Signal(tuple)
@@ -72,47 +71,92 @@ class Worker(QObject):
     @Slot()
     def run(self, ModelInfo):
 
-        def ModelPara(BuildingName):
+        def ModelPara():
             DiaphragmNodes = []
             BaseNodes = []
-            if BuildingName == "S":
-                DiaphragmNodes = [244, 245, 273, 328, 384, 356]
-                BaseNodes = [134, 199, 135, 223, 159, 139, 155, 208, 144, 148, 149, 213, 154, 163, 166, 167, 231, 173, 174,
-                             238, 176, 181, 186, 189, 191, 194, 196, 205, 209, 216, 220, 222, 225, 235, 241, 243]
 
-            elif BuildingName == "L1":
-                DiaphragmNodes = [226, 227, 255, 310, 366, 338]
-                BaseNodes = [110, 206, 142, 113, 116, 196, 132, 123, 136, 128, 133, 197, 144, 208, 146, 210, 199, 203, 204,
-                             205, 207, 209, 211, 212, 213, 214, 216, 218, 220, 221, 222, 224, 225]
+            if BaseCondition == "Fixed":
+                if BuildingName == "S":
+                    DiaphragmNodes = [217, 218, 219, 220, 221, 222]
+                    BaseNodes = [112, 186, 122, 178, 164, 108, 172, 167, 169, 181, 117, 182, 189, 193, 195, 196, 132,
+                                 198,
+                                 204, 140, 208, 211, 147, 107, 121, 127, 128, 136, 139, 146, 149, 154, 159, 162, 214,
+                                 216]
+                elif BuildingName == "L1":
+                    DiaphragmNodes = [199, 200, 201, 202, 203, 204]
+                    BaseNodes = [179, 115, 181, 117, 119, 183, 106, 170, 186, 172, 184, 185, 187, 189, 191, 193, 194,
+                                 195,
+                                 83, 86, 89, 96, 101, 105, 169, 109, 176, 177, 178, 180, 182, 197, 198]
 
-            elif BuildingName == "L2":
-                DiaphragmNodes = [208, 209, 237, 292, 348, 320]
-                BaseNodes = [93, 125, 96, 99, 115, 106, 111, 175, 183, 119, 116, 180, 127, 191, 128, 176, 178, 181, 182,
-                             184, 185, 186, 187, 188, 195, 198, 199, 205, 206, 207]
+                elif BuildingName == "L2":
+                    DiaphragmNodes = [181, 182, 183, 184, 185, 186]
+                    BaseNodes = [98, 100, 164, 101, 149, 151, 160, 168, 161, 178, 179, 180, 66, 69, 72, 79, 84, 148, 88,
+                                 89,
+                                 153, 92, 156, 154, 155, 157, 158, 159, 171, 172]
 
-            elif BuildingName == "L3":
-                DiaphragmNodes = [190, 191, 219, 274, 330, 302]
-                BaseNodes = [72, 75, 155, 91, 78, 150, 86, 102, 82, 92, 156, 95, 159, 104, 151, 154, 157, 158, 160, 161,
-                             165, 169, 171, 172, 187, 188, 189]
+                elif BuildingName == "L3":
+                    DiaphragmNodes = [163, 164, 165, 166, 167, 168]
+                    BaseNodes = [75, 77, 124, 134, 142, 138, 162, 160, 161, 45, 48, 51, 55, 59, 123, 64, 128, 65, 129,
+                                 68,
+                                 132, 127, 130, 131, 133, 144, 145]
 
-            elif BuildingName == "L4":
-                DiaphragmNodes = [172, 173, 201, 256, 312, 284]
-                BaseNodes = [161, 97, 129, 100, 132, 101, 103, 104, 131, 107, 171, 134, 135, 136, 139, 141, 154, 156, 157,
-                             158, 162, 163, 169, 170]
 
-            elif BuildingName == "R":
-                DiaphragmNodes = [117, 118, 127, 191, 163, 219]
-                BaseNodes = [66, 69, 93, 101, 73, 95, 96, 99, 100, 107, 108, 109, 110, 111, 112, 113, 115, 116]
+                elif BuildingName == "L4":
+                    DiaphragmNodes = [145, 146, 147, 148, 149, 150]
+                    BaseNodes = [73, 105, 144, 80, 112, 102, 107, 108, 114, 127, 129, 130, 131, 134, 70, 135, 136, 142,
+                                 143,
+                                 74, 76, 77, 104, 109]
 
-            return DiaphragmNodes, BaseNodes
 
+                elif BuildingName == "R":
+                    DiaphragmNodes = [109, 110, 111, 112, 113, 114]
+                    BaseNodes = [65, 85, 101, 88, 91, 99, 107, 92, 100, 58, 61, 87, 93, 102, 103, 104, 105, 108]
+
+
+
+                return DiaphragmNodes, BaseNodes, False
+
+            else:
+                if BuildingName == "S":
+                    DiaphragmNodes = [244, 245, 273, 328, 384, 356]
+                    BaseNodes = [134, 199, 135, 223, 159, 139, 155, 208, 144, 148, 149, 213, 154, 163, 166, 167, 231, 173, 174,
+                                 238, 176, 181, 186, 189, 191, 194, 196, 205, 209, 216, 220, 222, 225, 235, 241, 243]
+
+                elif BuildingName == "L1":
+                    DiaphragmNodes = [226, 227, 255, 310, 366, 338]
+                    BaseNodes = [110, 206, 142, 113, 116, 196, 132, 123, 136, 128, 133, 197, 144, 208, 146, 210, 199, 203, 204,
+                                 205, 207, 209, 211, 212, 213, 214, 216, 218, 220, 221, 222, 224, 225]
+
+                elif BuildingName == "L2":
+                    DiaphragmNodes = [208, 209, 237, 292, 348, 320]
+                    BaseNodes = [93, 125, 96, 99, 115, 106, 111, 175, 183, 119, 116, 180, 127, 191, 128, 176, 178, 181, 182,
+                                 184, 185, 186, 187, 188, 195, 198, 199, 205, 206, 207]
+
+                elif BuildingName == "L3":
+                    DiaphragmNodes = [190, 191, 219, 274, 330, 302]
+                    BaseNodes = [72, 75, 155, 91, 78, 150, 86, 102, 82, 92, 156, 95, 159, 104, 151, 154, 157, 158, 160, 161,
+                                 165, 169, 171, 172, 187, 188, 189]
+
+                elif BuildingName == "L4":
+                    DiaphragmNodes = [172, 173, 201, 256, 312, 284]
+                    BaseNodes = [161, 97, 129, 100, 132, 101, 103, 104, 131, 107, 171, 134, 135, 136, 139, 141, 154, 156, 157,
+                                 158, 162, 163, 169, 170]
+
+                elif BuildingName == "R":
+                    DiaphragmNodes = [117, 118, 127, 191, 163, 219]
+                    BaseNodes = [66, 69, 93, 101, 73, 95, 96, 99, 100, 107, 108, 109, 110, 111, 112, 113, 115, 116]
+
+                return DiaphragmNodes, BaseNodes, True
+
+        BuildingName = ModelInfo[0]
         FolderPath = ModelInfo[1]
         ResultObj = ModelInfo[2]
         Index = ModelInfo[3]
+        BaseCondition = ModelInfo[4]
 
-        DiaphragmNodes, BaseNodes = ModelPara(ModelInfo[0])
+        DiaphragmNodes, BaseNodes, SSI_Analysis = ModelPara()
 
-        SSI_Analysis = True
+
 
         # doc = App.postDocument()
         # doc.clearPlotGroups()
@@ -435,6 +479,7 @@ for index, line in enumerate(lines):
 for index, line in enumerate(lines):
     path = line.strip()
     BuildingName = path.split("\\")[-3]
+    BaseCondition = path.split("\\")[-1]
     unicode_path = path.encode('utf-8')
     items = os.listdir(unicode_path)
 
@@ -445,7 +490,7 @@ for index, line in enumerate(lines):
             App.runCommand("OpenDatabase", RecordPath)
             break
 
-    ModelInfo = [BuildingName, unicode_path.decode(), ResultObjects[index], index]
+    ModelInfo = [BuildingName, unicode_path.decode(), ResultObjects[index], index, BaseCondition]
 
     thread = QThread()
     worker = Worker()
