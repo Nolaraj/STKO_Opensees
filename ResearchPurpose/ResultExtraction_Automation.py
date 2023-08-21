@@ -106,14 +106,13 @@ class Worker(QObject):
 
             return DiaphragmNodes, BaseNodes
 
-
         FolderPath = ModelInfo[1]
         ResultObj = ModelInfo[2]
+        Index = ModelInfo[3]
 
         DiaphragmNodes, BaseNodes = ModelPara(ModelInfo[0])
 
         SSI_Analysis = True
-
 
         # doc = App.postDocument()
         # doc.clearPlotGroups()
@@ -130,7 +129,7 @@ class Worker(QObject):
             # get first database
             if len(doc.databases) == 0:
                 raise Exception("You need a database with ID = 1 for this script")
-            db = doc.getDatabase(1)
+            db = doc.getDatabase(Index + 1)
 
             Drift_sp_target_i = []
             Drift_sp_target_j = []
@@ -175,7 +174,7 @@ class Worker(QObject):
 
             # evaluate all results for each stage
             num_steps = len(all_steps)
-            num_steps = 5
+            num_steps = 10
             for step_counter in range(num_steps):
 
                 # get step id and time
@@ -371,9 +370,8 @@ class Worker(QObject):
             Max_Settlement = min(Uz_Min)
             Max_Settlement_index = Uz_Min.index(Max_Settlement)
             Max_Settlement_Point = Uz_Min_Node[Max_Settlement_index]
-            
-            print("Max, Settlement Point", "Max Uplift", Max_Uplift, Max_Settlement)
 
+            print("Max, Settlement Point", "Max Uplift", Max_Uplift, Max_Settlement)
 
             # #_________________Writing Starts from here
             Titles = ["Drift X", "Drift Y", "Displacement X", "Displacement Y", "Reaction Force X", "Reaction Force Y",
@@ -403,8 +401,6 @@ class Worker(QObject):
                 ResultObj.write('\t'.join(Items))
                 ResultObj.write('\n')
             ResultObj.close()
-
-
 
         ResultExt_Writer()
 
@@ -450,7 +446,7 @@ for index, line in enumerate(lines):
             App.runCommand("OpenDatabase", RecordPath)
             break
 
-    ModelInfo = [BuildingName, unicode_path.decode(), ResultObjects[index]]
+    ModelInfo = [BuildingName, unicode_path.decode(), ResultObjects[index], index]
 
     thread = QThread()
     worker = Worker()
