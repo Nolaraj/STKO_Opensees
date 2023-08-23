@@ -525,8 +525,8 @@ def Group_B():
                 ModelCode  = ModelCode + "_" + Value
 
         Codes = ModelCode.split("_")
-        # if writerBiasedFor not in Codes:
-        #     break
+        if writerBiasedFor not in Codes:
+            break
 
         LineValue.append(ModelCode)
 
