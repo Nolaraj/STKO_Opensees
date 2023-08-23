@@ -474,12 +474,14 @@ else:
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
 FileName = 'Main_Path.txt'
+writerBiasedFor = "Fixed"
 Drift_sp_file = open(FileName, 'r')
 
 lines = Drift_sp_file.readlines()
 Drift_sp_file.close()
 
 ResultObjects = []
+Paths = []
 for index, line in enumerate(lines):
     path = line.strip()
     ResultFile = "Result.txt"
@@ -487,12 +489,20 @@ for index, line in enumerate(lines):
     ResultObj = open(ResultPath, 'w+')
     ResultObjects.append(ResultObj)
 
-for index, line in enumerate(lines):
+    path = line.strip()
+    BaseCondition = path.split("\\")[-1]
+    if BaseCondition == writerBiasedFor:
+        Paths.append(path)
+
+
+
+for index, line in enumerate(Paths):
     path = line.strip()
     BuildingName = path.split("\\")[-3]
     BaseCondition = path.split("\\")[-1]
     unicode_path = path.encode('utf-8')
     items = os.listdir(unicode_path)
+
 
     for file in items:
         fileExt = file.decode()[-5:]
