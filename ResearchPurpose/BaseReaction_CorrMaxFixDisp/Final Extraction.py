@@ -613,7 +613,7 @@ for line in FileData:
 for index, line in enumerate(Paths):
     path = line.strip()
     BuildingName = path.split("\\")[-3]
-    Earthquake = path.split("\\")[-3]
+    Earthquake = path.split("\\")[-2]
     BaseCondition = path.split("\\")[-1]
     unicode_path = path.encode('utf-8')
     items = os.listdir(unicode_path)
@@ -624,9 +624,11 @@ for index, line in enumerate(Paths):
 
     Code = BuildingName + "_" + Earthquake + "_" + "Fixed"
     for dataline in LineData:
+        print(Code, dataline[0])
         if dataline[0] == Code:
             Pseudotime = dataline[2]
             Displacement = dataline[3]
+    print(Pseudotime, Displacement)
 
 
 
