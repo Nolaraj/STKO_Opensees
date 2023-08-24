@@ -8,7 +8,6 @@ import os
 use_dialog = True  # True = Dialog, False = Event Loop
 
 
-
 class QBlockingSlot(QObject):
     requestCall = Signal(tuple)
     done = Signal()
@@ -112,34 +111,37 @@ class Worker(QObject):
                     DiaphragmNodes = [109, 110, 111, 112, 113, 114]
                     BaseNodes = [65, 85, 101, 88, 91, 99, 107, 92, 100, 58, 61, 87, 93, 102, 103, 104, 105, 108]
 
-
-
                 return DiaphragmNodes, BaseNodes, False
 
             else:
                 if BuildingName == "S":
                     DiaphragmNodes = [244, 245, 273, 328, 384, 356]
-                    BaseNodes = [134, 199, 135, 223, 159, 139, 155, 208, 144, 148, 149, 213, 154, 163, 166, 167, 231, 173, 174,
+                    BaseNodes = [134, 199, 135, 223, 159, 139, 155, 208, 144, 148, 149, 213, 154, 163, 166, 167, 231,
+                                 173, 174,
                                  238, 176, 181, 186, 189, 191, 194, 196, 205, 209, 216, 220, 222, 225, 235, 241, 243]
 
                 elif BuildingName == "L1":
                     DiaphragmNodes = [226, 227, 255, 310, 366, 338]
-                    BaseNodes = [110, 206, 142, 113, 116, 196, 132, 123, 136, 128, 133, 197, 144, 208, 146, 210, 199, 203, 204,
+                    BaseNodes = [110, 206, 142, 113, 116, 196, 132, 123, 136, 128, 133, 197, 144, 208, 146, 210, 199,
+                                 203, 204,
                                  205, 207, 209, 211, 212, 213, 214, 216, 218, 220, 221, 222, 224, 225]
 
                 elif BuildingName == "L2":
                     DiaphragmNodes = [208, 209, 237, 292, 348, 320]
-                    BaseNodes = [93, 125, 96, 99, 115, 106, 111, 175, 183, 119, 116, 180, 127, 191, 128, 176, 178, 181, 182,
+                    BaseNodes = [93, 125, 96, 99, 115, 106, 111, 175, 183, 119, 116, 180, 127, 191, 128, 176, 178, 181,
+                                 182,
                                  184, 185, 186, 187, 188, 195, 198, 199, 205, 206, 207]
 
                 elif BuildingName == "L3":
                     DiaphragmNodes = [190, 191, 219, 274, 330, 302]
-                    BaseNodes = [72, 75, 155, 91, 78, 150, 86, 102, 82, 92, 156, 95, 159, 104, 151, 154, 157, 158, 160, 161,
+                    BaseNodes = [72, 75, 155, 91, 78, 150, 86, 102, 82, 92, 156, 95, 159, 104, 151, 154, 157, 158, 160,
+                                 161,
                                  165, 169, 171, 172, 187, 188, 189]
 
                 elif BuildingName == "L4":
                     DiaphragmNodes = [172, 173, 201, 256, 312, 284]
-                    BaseNodes = [161, 97, 129, 100, 132, 101, 103, 104, 131, 107, 171, 134, 135, 136, 139, 141, 154, 156, 157,
+                    BaseNodes = [161, 97, 129, 100, 132, 101, 103, 104, 131, 107, 171, 134, 135, 136, 139, 141, 154,
+                                 156, 157,
                                  158, 162, 163, 169, 170]
 
                 elif BuildingName == "R":
@@ -153,10 +155,11 @@ class Worker(QObject):
         ResultObj = ModelInfo[2]
         Index = ModelInfo[3]
         BaseCondition = ModelInfo[4]
+        Pseudotime = ModelInfo[5][0]
+        Displacement = ModelInfo[5][1]
+        print(Pseudotime, Displacement)
 
         DiaphragmNodes, BaseNodes, SSI_Analysis = ModelPara()
-
-
 
         # doc = App.postDocument()
         # doc.clearPlotGroups()
@@ -168,6 +171,97 @@ class Worker(QObject):
 
         # Function for Extraction of results, results processing and writing to teh file provided
         def ResultExt_Writer():
+            def CorresVal_IndexFinder(BaseList=[], MovList=[], BaseVal=0, MovVal=0):
+                def BracketPeak(List1, List2, List1RefVal):
+                    index1 = 0
+                    index2 = 0
+
+                    def PosNegChange(a, b):
+                        A = 0
+                        B = 0
+                        if a >= 0:
+                            A = 1
+
+                        if b >= 0:
+                            B = 1
+
+                        if (A == 1 and B == 0) or (A == 0 and B == 1):
+                            print(A, B)
+                            return 1
+                        else:
+                            return 0
+
+                    prevVal = 0
+                    for index, (L1, L2) in enumerate(zip(List1, List2)):
+
+                        if PosNegChange(prevVal, L2):
+                            if L1 <= List1RefVal:
+                                index1 = index
+                            if L1 > List1RefVal:
+                                index2 = index
+                                break
+
+                        prevVal = L2
+
+                    List1 = [x for x in List1[index1:index2]]
+                    List2 = [x for x in List2[index1:index2]]
+
+                    return List1, List2, index1
+
+                def corrRef(List, RefValue):
+                    Index1 = 0
+                    Index2 = 0
+                    dynindex1 = 0
+                    dynindex2 = 0
+                    print(List)
+
+                    # Index1 Identification
+                    del1 = 0
+                    del2 = 0
+                    for index, value in enumerate(List):
+                        if abs(value) < RefValue:
+                            dynindex1 = index
+                            del1 = abs(abs(value) - RefValue)
+                        if abs(value) >= RefValue:
+                            dynindex2 = index
+                            del2 = abs(abs(value) - RefValue)
+                            break
+                    if del1 > del2:
+                        Index1 = dynindex2
+                    else:
+                        Index1 = dynindex1
+
+                    # Index2 Identification
+                    del1 = 0
+                    del2 = 0
+                    for index, value in enumerate(List):
+                        index = len(List) - index - 1
+                        value = List[index]
+                        if abs(value) <= RefValue:
+                            dynindex1 = index
+                            del1 = abs(abs(value) - RefValue)
+                        if abs(value) > RefValue:
+                            dynindex2 = index
+                            del2 = abs(abs(value) - RefValue)
+                            break
+                    if del1 > del2:
+                        Index2 = dynindex2
+                    else:
+                        Index2 = dynindex1
+
+                    return Index1, Index2
+
+                # Provide the corresponding time value for this Bracket Peak functions
+                splList1, splList2, index = BracketPeak(List1=BaseList, List2=MovList, List1RefVal=BaseVal)
+
+                # Feed the corresponding displacement to be required in the bracketted list
+                Index1, Index2 = corrRef(splList2, RefValue=MovVal)
+
+                print(index, Index1)
+
+                AbsIndex = index + Index1
+                return AbsIndex
+
             # # get document
             doc = App.postDocument()
             # get first database
@@ -218,11 +312,13 @@ class Worker(QObject):
 
             # evaluate all results for each stage
             num_steps = len(all_steps)
+            time_steps = []
             for step_counter in range(num_steps):
 
                 # get step id and time
                 step_id = all_steps[step_counter]
                 step_time = all_times[step_counter]
+                time_steps.append(step_time)
 
                 # write something...
                 # and process all application events to avoid GUI freezing...
@@ -389,6 +485,9 @@ class Worker(QObject):
 
             # Displacements
             DisplacementX = []
+            all_dispXTOP = all_dispX[list(all_dispX.keys())[-1]]
+
+
             RefDispX = all_dispX[0]
             for key, value in all_dispX.items():
                 RelDispX = value
@@ -416,11 +515,13 @@ class Worker(QObject):
             Max_Settlement_Point = Uz_Min_Node[Max_Settlement_index]
 
             # Base Shear and Its Pseudo time
-            try:
-                index = BaseReactionX.index(max(AbsouluteList(BaseReactionX)))
-            except:
-                index = BaseReactionX.index(-max(AbsouluteList(BaseReactionX)))
-            MaxBS_PseudoTime = all_times[index]
+            # try:
+            #     index = BaseReactionX.index(max(AbsouluteList(BaseReactionX)))
+            # except:
+            #     index = BaseReactionX.index(-max(AbsouluteList(BaseReactionX)))
+            # MaxBS_PseudoTime = all_times[index]
+
+            IndexOInterest = CorresVal_IndexFinder(BaseList=time_steps, MovList=all_dispXTOP, BaseVal=Pseudotime, MovVal=Displacement)
 
             print("Max, Settlement Point", "Max Uplift", Max_Uplift, Max_Settlement)
 
@@ -437,7 +538,7 @@ class Worker(QObject):
                     ResultObj.write('\t'.join(Titles))
                     ResultObj.write('\n')
 
-                    Items.append(str(max(AbsouluteList(BaseReactionX))))
+                    Items.append(str(abs(BaseReactionX[IndexOInterest])))
                     Items.append(str(max(AbsouluteList(BaseReactionY))))
                     Items.append(str(max(AbsouluteList(BaseMomentX))))
                     Items.append(str(max(AbsouluteList(BaseMomentY))))
@@ -449,8 +550,8 @@ class Worker(QObject):
                     Items.append(str(Max_Settlement))
                     Items.append(str(Max_Settlement_Point))
 
-                if index == 1:
-                    Items.append(str(MaxBS_PseudoTime))
+                # if index == 1:
+                #     Items.append(str(MaxBS_PseudoTime))
 
                 ResultObj.write('\t'.join(Items))
                 ResultObj.write('\n')
@@ -476,6 +577,9 @@ else:
 writerBiasedFor = "Fixed"
 FileName = 'Main_Path.txt'
 
+
+
+#Path Decider and Defining step
 Drift_sp_file = open(FileName, 'r')
 lines = Drift_sp_file.readlines()
 Drift_sp_file.close()
@@ -485,70 +589,86 @@ for index, line in enumerate(lines):
     path = line.strip()
     ResultFile = "Result.txt"
     ResultPath = os.path.join(path, ResultFile)
-    ResultObj = open(ResultPath, 'w+')
-    ResultObjects.append(ResultObj)
 
     path = line.strip()
     BaseCondition = path.split("\\")[-1]
     if BaseCondition != writerBiasedFor:
         Paths.append(path)
 
+        ResultObj = open(ResultPath, 'w+')
+        ResultObjects.append(ResultObj)
 
-CodeFile = "PseudoTime"
+
+#Reading Previously written text file for customized data extraction in further phases
+CodeFile = "PseudoInfo.txt"
 CodeObj = open(CodeFile, 'r')
 FileData = CodeObj.readlines()
 CodeObj.close()
-print(FileData)
+LineData = []
+for line in FileData:
+    values = line.strip().split('\t')
+    LineData.append(values)
 
-#
-# for index, line in enumerate(Paths):
-#     path = line.strip()
-#     BuildingName = path.split("\\")[-3]
-#     BaseCondition = path.split("\\")[-1]
-#     unicode_path = path.encode('utf-8')
-#     items = os.listdir(unicode_path)
-#
-#
-#     for file in items:
-#         fileExt = file.decode()[-5:]
-#         if fileExt == '.mpco':
-#             RecordPath = os.path.join(unicode_path, file)
-#             App.runCommand("OpenDatabase", RecordPath)
-#             break
-#
-#     ModelInfo = [BuildingName, unicode_path.decode(), ResultObjects[index], index, BaseCondition]
-#
-#     thread = QThread()
-#     worker = Worker()
-#     worker.moveToThread(thread)
-#
-#     worker.finished.connect(thread.quit)
-#     worker.finished.connect(worker.deleteLater)
-#     thread.started.connect(worker.run)
-#     thread.finished.connect(thread.deleteLater)
-#
-#     # Connect the executeTask signal to the run slot
-#     worker.executeTask.connect(worker.run)
-#
-#     # Start the thread and run dialog or event loop
-#     thread.start()
-#
-#     if use_dialog:
-#         worker.sendPercentage.connect(pbar.setValue)
-#         thread.finished.connect(dialog.accept)
-#     else:
-#         thread.finished.connect(loop.quit)
-#
-#     # Emit the executeTask signal with the ModelInfo argument
-#     worker.executeTask.emit(ModelInfo)  # Pass the ModelInfo list as an argument
-#
-#     if use_dialog:
-#         dialog.exec_()
-#     else:
-#         loop.exec_()
-#
-#     print("I am here 5")
-#
-#     print(f"Well Executed for Index No {index}")
+#Actual enforcing the software for collection
+for index, line in enumerate(Paths):
+    path = line.strip()
+    BuildingName = path.split("\\")[-3]
+    Earthquake = path.split("\\")[-3]
+    BaseCondition = path.split("\\")[-1]
+    unicode_path = path.encode('utf-8')
+    items = os.listdir(unicode_path)
+
+    # Extracting for the pseudo time and disp corresponding to the filecode
+    Pseudotime = 0
+    Displacement = 0
+
+    Code = BuildingName + "_" + Earthquake + "_" + "Fixed"
+    for dataline in LineData:
+        if dataline[0] == Code:
+            Pseudotime = dataline[2]
+            Displacement = dataline[3]
+
+
+
+    for file in items:
+        fileExt = file.decode()[-5:]
+        if fileExt == '.mpco':
+            RecordPath = os.path.join(unicode_path, file)
+            App.runCommand("OpenDatabase", RecordPath)
+            break
+
+    ModelInfo = [BuildingName, unicode_path.decode(), ResultObjects[index], index, BaseCondition, [Pseudotime, Displacement]]
+
+    thread = QThread()
+    worker = Worker()
+    worker.moveToThread(thread)
+
+    worker.finished.connect(thread.quit)
+    worker.finished.connect(worker.deleteLater)
+    thread.started.connect(worker.run)
+    thread.finished.connect(thread.deleteLater)
+
+    # Connect the executeTask signal to the run slot
+    worker.executeTask.connect(worker.run)
+
+    # Start the thread and run dialog or event loop
+    thread.start()
+
+    if use_dialog:
+        worker.sendPercentage.connect(pbar.setValue)
+        thread.finished.connect(dialog.accept)
+    else:
+        thread.finished.connect(loop.quit)
+
+    # Emit the executeTask signal with the ModelInfo argument
+    worker.executeTask.emit(ModelInfo)  # Pass the ModelInfo list as an argument
+
+    if use_dialog:
+        dialog.exec_()
+    else:
+        loop.exec_()
+
+
+    print(f"Well Executed for Index No {index}")
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
