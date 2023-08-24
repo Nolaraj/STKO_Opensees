@@ -487,13 +487,13 @@ for index, line in enumerate(lines):
     ResultFile = "Result.txt"
     ResultPath = os.path.join(path, ResultFile)
     ResultObj = open(ResultPath, 'w+')
-    ResultObjects.append(ResultObj)
 
     path = line.strip()
     BaseCondition = path.split("\\")[-1]
+    print(BaseCondition)
     if BaseCondition == writerBiasedFor:
         Paths.append(path)
-
+        ResultObjects.append(ResultObj)
 
 
 for index, line in enumerate(Paths):
@@ -542,7 +542,6 @@ for index, line in enumerate(Paths):
     else:
         loop.exec_()
 
-    print("I am here 5")
 
     print(f"Well Executed for Index No {index}")
 
