@@ -459,8 +459,8 @@ FileName = "Result.txt"
 OutputPath = os.path.join(folderpath, f'{OutputName}.xlsx')
 
 #Writing for the Result Assembly file
-# ResultFiles = filePaths(subfolders, FileName)
-# ExcelWriter(ResultFiles, OutputPath, Sheetname)
+ResultFiles = filePaths(subfolders, FileName)
+ExcelWriter(ResultFiles, OutputPath, Sheetname)
 
 
 Buildings = [ "L1", "L2", "L3", "L4", "R", "S"]
@@ -514,6 +514,7 @@ def Group_B():
 
     WritingFile = os.path.join(folderpath, "PseudoInfo.txt")
     file = open(WritingFile, "w+")
+    print(TableRows)
     for row in TableRows:
         LineValue = []
         ModelCode = ""
@@ -522,11 +523,12 @@ def Group_B():
             if col == 1:
                 ModelCode = Value
             else:
-                ModelCode  = ModelCode + "_" + Value
+                ModelCode = ModelCode + "_" + Value
 
         Codes = ModelCode.split("_")
+        print(Codes)
         if writerBiasedFor not in Codes:
-            break
+            continue
 
         LineValue.append(ModelCode)
 
