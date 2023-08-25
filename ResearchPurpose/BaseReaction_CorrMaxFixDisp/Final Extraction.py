@@ -5,6 +5,7 @@ from PySide2.QtCore import Qt, QObject, Signal, Slot, QThread, QEventLoop
 from PySide2.QtWidgets import QDialog, QLabel, QProgressBar, QVBoxLayout, QApplication
 import os
 from itertools import zip_longest
+import math
 
 use_dialog = True  # True = Dialog, False = Event Loop
 
@@ -220,7 +221,6 @@ class Worker(QObject):
                     Index2 = 0
                     dynindex1 = 0
                     dynindex2 = 0
-                    print(List)
 
                     # Index1 Identification
                     del1 = 0
@@ -233,10 +233,8 @@ class Worker(QObject):
                             dynindex2 = index
                             del2 = abs(abs(value) - RefValue)
                             break
-                    if del1 > del2:
-                        Index1 = dynindex2
-                    else:
-                        Index1 = dynindex1
+                    Index1 = dynindex1 + (del1/(del1 + del2))*(dynindex2 - dynindex1)
+
 
                     # Index2 Identification
                     del1 = 0
@@ -251,10 +249,7 @@ class Worker(QObject):
                             dynindex2 = index
                             del2 = abs(abs(value) - RefValue)
                             break
-                    if del1 > del2:
-                        Index2 = dynindex2
-                    else:
-                        Index2 = dynindex1
+                    Index2 = dynindex1 + (del1/(del1 + del2))*(dynindex2 - dynindex1)
 
                     return Index1, Index2
 
@@ -480,6 +475,20 @@ class Worker(QObject):
                 return value
 
             # Data Processing Section
+            #Removing the extra residue created during initializing the recorders
+            for i in range(0, len(Drift_sp_target_i) + 1):
+                if len(all_driftsX[i]) != 1:
+                    all_driftsX[i].pop(0)
+                if len(all_driftsY[i]) != 1:
+                    all_driftsY[i].pop(0)
+                if len(all_dispX[i]) != 1:
+                    all_dispX[i].pop(0)
+                if len(all_dispY[i]) != 1:
+                    all_dispY[i].pop(0)
+
+
+
+
 
             # Drifts
             DriftX = []
@@ -531,40 +540,50 @@ class Worker(QObject):
 
 
             IndexOInterest = CorresVal_IndexFinder(BaseList=time_steps, MovList=all_dispXTOP, BaseVal=float(Pseudotime), MovVal=float(Displacement))
+            print(IndexOInterest)
+            def AbsListVal(List, FloatIndex):
+                Deci_Int = math.modf(FloatIndex)
+                a = int(Deci_Int[1])
+                b = a + 1
+                ReqValue = List[a] + Deci_Int[0] * (List[b] - List[a])
 
-            print("Max, Settlement Point", "Max Uplift", Max_Uplift, Max_Settlement)
+                return ReqValue
+            a = AbsListVal(BaseReactionX, IndexOInterest)
+            print(a)
+                
+            def Writer():
+                Titles = ["Drift X", "Drift Y", "Displacement X", "Displacement Y", "Reaction Force X", "Reaction Force Y",
+                          "Reaction Moment X", "Reaction Moment Y", "Rocking Angle X", "Rocking Angle Y", "Rocking Angle Z",
+                          "Max Uplift", "Max Uplift Point", "Max Settlement", "Max Settlement Point"
+                          ]
+                for index, value in enumerate(DriftX):
 
-            # #_________________Writing Starts from here
-            Titles = ["Drift X", "Drift Y", "Displacement X", "Displacement Y", "Reaction Force X", "Reaction Force Y",
-                      "Reaction Moment X", "Reaction Moment Y", "Rocking Angle X", "Rocking Angle Y", "Rocking Angle Z",
-                      "Max Uplift", "Max Uplift Point", "Max Settlement", "Max Settlement Point"
-                      ]
-            for index, value in enumerate(DriftX):
+                    Items = [str(DriftX[index]), str(DriftY[index]), str(DisplacementX[index]), str(DisplacementY[index])]
 
-                Items = [str(DriftX[index]), str(DriftY[index]), str(DisplacementX[index]), str(DisplacementY[index])]
+                    if index == 0:
+                        ResultObj.write('\t'.join(Titles))
+                        ResultObj.write('\n')
 
-                if index == 0:
-                    ResultObj.write('\t'.join(Titles))
+                        Items.append(str(abs(AbsListVal(BaseReactionX, IndexOInterest))))
+                        Items.append(str(max(AbsouluteList(BaseReactionY))))
+                        Items.append(str(max(AbsouluteList(BaseMomentX))))
+                        Items.append(str(max(AbsouluteList(BaseMomentY))))
+                        Items.append(str(max(AbsouluteList(RotationX))))
+                        Items.append(str(max(AbsouluteList(RotationY))))
+                        Items.append(str(max(AbsouluteList(RotationZ))))
+                        Items.append(str(Max_Uplift))
+                        Items.append(str(Max_Uplift_Point))
+                        Items.append(str(Max_Settlement))
+                        Items.append(str(Max_Settlement_Point))
+
+                    # if index == 1:
+                    #     Items.append(str(MaxBS_PseudoTime))
+
+                    ResultObj.write('\t'.join(Items))
                     ResultObj.write('\n')
+                ResultObj.close()
+            Writer()
 
-                    Items.append(str(abs(BaseReactionX[IndexOInterest])))
-                    Items.append(str(max(AbsouluteList(BaseReactionY))))
-                    Items.append(str(max(AbsouluteList(BaseMomentX))))
-                    Items.append(str(max(AbsouluteList(BaseMomentY))))
-                    Items.append(str(max(AbsouluteList(RotationX))))
-                    Items.append(str(max(AbsouluteList(RotationY))))
-                    Items.append(str(max(AbsouluteList(RotationZ))))
-                    Items.append(str(Max_Uplift))
-                    Items.append(str(Max_Uplift_Point))
-                    Items.append(str(Max_Settlement))
-                    Items.append(str(Max_Settlement_Point))
-
-                # if index == 1:
-                #     Items.append(str(MaxBS_PseudoTime))
-
-                ResultObj.write('\t'.join(Items))
-                ResultObj.write('\n')
-            ResultObj.close()
 
         ResultExt_Writer()
 
