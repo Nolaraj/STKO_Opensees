@@ -1,0 +1,1 @@
+Note: If the abnormal condition persists and the code gets stucked or get closed automatically on STKO during code execution, open previously created Post Processor database (ie one which is in first of main_path.txt file ) and execute code. It works.
