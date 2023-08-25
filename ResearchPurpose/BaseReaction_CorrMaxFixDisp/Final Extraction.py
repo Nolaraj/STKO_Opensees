@@ -4,6 +4,7 @@ from time import sleep
 from PySide2.QtCore import Qt, QObject, Signal, Slot, QThread, QEventLoop
 from PySide2.QtWidgets import QDialog, QLabel, QProgressBar, QVBoxLayout, QApplication
 import os
+from itertools import zip_longest
 
 use_dialog = True  # True = Dialog, False = Event Loop
 
@@ -171,10 +172,16 @@ class Worker(QObject):
 
         # Function for Extraction of results, results processing and writing to teh file provided
         def ResultExt_Writer():
-            def CorresVal_IndexFinder(BaseList=[], MovList=[], BaseVal=0, MovVal=0):
+            def CorresVal_IndexFinder(BaseList, MovList, BaseVal=0, MovVal=0):
                 def BracketPeak(List1, List2, List1RefVal):
+                    ListLen = min(len(List1), len(List2))
+                    List1 = List1[:ListLen]
+                    List2 = List2[:ListLen]
+
+
                     index1 = 0
                     index2 = 0
+
 
                     def PosNegChange(a, b):
                         A = 0
@@ -192,7 +199,7 @@ class Worker(QObject):
                             return 0
 
                     prevVal = 0
-                    for index, (L1, L2) in enumerate(zip(List1, List2)):
+                    for index, (L1, L2) in enumerate(zip_longest(List1, List2, fillvalue=0)):
 
                         if PosNegChange(prevVal, L2):
                             if L1 <= List1RefVal:
@@ -521,7 +528,9 @@ class Worker(QObject):
             #     index = BaseReactionX.index(-max(AbsouluteList(BaseReactionX)))
             # MaxBS_PseudoTime = all_times[index]
 
-            IndexOInterest = CorresVal_IndexFinder(BaseList=time_steps, MovList=all_dispXTOP, BaseVal=Pseudotime, MovVal=Displacement)
+
+
+            IndexOInterest = CorresVal_IndexFinder(BaseList=time_steps, MovList=all_dispXTOP, BaseVal=float(Pseudotime), MovVal=float(Displacement))
 
             print("Max, Settlement Point", "Max Uplift", Max_Uplift, Max_Settlement)
 
@@ -612,6 +621,8 @@ for line in FileData:
 #Actual enforcing the software for collection
 for index, line in enumerate(Paths):
     path = line.strip()
+    if path.split("\\")[-3] == None:
+        continue
     BuildingName = path.split("\\")[-3]
     Earthquake = path.split("\\")[-2]
     BaseCondition = path.split("\\")[-1]
