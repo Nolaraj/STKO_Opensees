@@ -173,16 +173,17 @@ class Worker(QObject):
 
         # Function for Extraction of results, results processing and writing to teh file provided
         def ResultExt_Writer():
+
             def CorresVal_IndexFinder(BaseList, MovList, BaseVal=0, MovVal=0):
                 def BracketPeak(List1, List2, List1RefVal):
                     ListLen = min(len(List1), len(List2))
                     List1 = List1[:ListLen]
                     List2 = List2[:ListLen]
 
-
                     index1 = 0
                     index2 = 0
-
+                    index3 = 0
+                    index4 = 0
 
                     def PosNegChange(a, b):
                         A = 0
@@ -194,7 +195,6 @@ class Worker(QObject):
                             B = 1
 
                         if (A == 1 and B == 0) or (A == 0 and B == 1):
-                            print(A, B)
                             return 1
                         else:
                             return 0
@@ -204,17 +204,94 @@ class Worker(QObject):
 
                         if PosNegChange(prevVal, L2):
                             if L1 <= List1RefVal:
-                                index1 = index
-                            if L1 > List1RefVal:
+                                index1 = index2
                                 index2 = index
+                            if index3 != 0 and L1 > List1RefVal:
+                                index4 = index
                                 break
+                            if L1 > List1RefVal:
+                                index3 = index
 
                         prevVal = L2
 
-                    List1 = [x for x in List1[index1:index2]]
-                    List2 = [x for x in List2[index1:index2]]
+                    List1 = [x for x in List1[index1:index4]]
+                    List2 = [x for x in List2[index1:index4]]
 
-                    return List1, List2, index1
+                    return List1, List2, int(index1), int(index2), int(index3), int(index4)
+
+                def absMaxPeak(List, index1, index2, index3, index4):
+                    prevVal = 0
+                    reqIndex = 0
+                    for index, value in enumerate(List):
+                        Value = abs(value)
+                        if prevVal < Value:
+                            prevVal = Value
+                            reqIndex = index
+                    reqIndex = index1 + index
+                    if (reqIndex <= index2) and (reqIndex > index1):
+                        return index1, index2
+                    if (reqIndex <= index3) and (reqIndex > index2):
+                        return index2, index3
+                    if (reqIndex <= index4) and (reqIndex > index3):
+                        return index3, index4
+
+                def peakSelector(List, index1, index2, index3, index4, SelectType=1):
+                    def AbsouluteList(Data):
+                        value = [abs(ele) for ele in Data]
+                        return value
+
+                    def peakValue(List):
+                        return max(AbsouluteList(List))
+
+                    def Peaks(List):
+                        Peak1 = peakValue(List[0:index2 - index1])
+                        Peak2 = peakValue(List[index2 - index1:index3 - index1])
+                        Peak3 = peakValue(List[index3 - index1:index4 - index1])
+                        # print(List[0:index2 - index1], 0, index2 - index1, index1)
+                        # print(List[index2 - index1:index3 - index1], index2 - index1, index3 - index1)
+                        # print(List[index3 - index1:index4 - index1], index3 - index1, index4 - index1)
+                        return Peak1, Peak2, Peak3
+
+                    Peak1, Peak2, Peak3 = Peaks(List)
+
+                    def PeakSel(Peak1, Peak2, Peak3, RefVal, SelectType):
+                        if SelectType == 0:
+                            if Peak2 > RefVal:
+                                return 1
+                            elif Peak3 > RefVal:
+                                return 2
+                            else:
+                                return 0
+
+                        if SelectType == 1:
+                            def Index(Peak1, Peak2, Peak3, Value):
+                                if Value == Peak1:
+                                    return 0
+                                elif Value == Peak2:
+                                    return 1
+                                else:
+                                    return 2
+
+                            List = [Peak1, Peak2, Peak3]
+                            List.sort()
+                            if List[0] > RefVal:
+                                return Index(Peak1, Peak2, Peak3, List[0])
+                            elif List[1] > RefVal:
+                                return Index(Peak1, Peak2, Peak3, List[1])
+                            else:
+                                return Index(Peak1, Peak2, Peak3, List[2])
+
+                    PeakNo = PeakSel(Peak1, Peak2, Peak3, MovVal, SelectType)
+
+                    def IndexSel(PeakNo):
+                        if PeakNo == 0:
+                            return index1, index2
+                        if PeakNo == 1:
+                            return index2, index3
+                        if PeakNo == 2:
+                            return index3, index4
+
+                    return (IndexSel(PeakNo))
 
                 def corrRef(List, RefValue):
                     Index1 = 0
@@ -233,8 +310,7 @@ class Worker(QObject):
                             dynindex2 = index
                             del2 = abs(abs(value) - RefValue)
                             break
-                    Index1 = dynindex1 + (del1/(del1 + del2))*(dynindex2 - dynindex1)
-
+                    Index1 = dynindex1 + (del1 / (del1 + del2)) * (dynindex2 - dynindex1)
 
                     # Index2 Identification
                     del1 = 0
@@ -249,19 +325,30 @@ class Worker(QObject):
                             dynindex2 = index
                             del2 = abs(abs(value) - RefValue)
                             break
-                    Index2 = dynindex1 + (del1/(del1 + del2))*(dynindex2 - dynindex1)
+                    Index2 = dynindex1 + (del1 / (del1 + del2)) * (dynindex2 - dynindex1)
 
                     return Index1, Index2
 
-                # Provide the corresponding time value for this Bracket Peak functions
-                splList1, splList2, index = BracketPeak(List1=BaseList, List2=MovList, List1RefVal=BaseVal)
+                # Provide the corresponding time value for this Bracket Peak functions (3 peaks, 4 Brackets)
+                splList1, splList2, Bracindex1, Bracindex2, Bracindex3, Bracindex4 = BracketPeak(List1=BaseList,
+                                                                                                 List2=MovList,
+                                                                                                 List1RefVal=BaseVal)
+
+                # Abs Max Bracket
+                # index1, index2 = absMaxPeak(splList2, Bracindex1, Bracindex2, Bracindex3, Bracindex4)
+                # splList1, splList2 = [x for x in BaseList[index1:index2]], [x for x in MovList[index1:index2]]
+
+                # peakSelector
+                index1, index2 = peakSelector(splList2, Bracindex1, Bracindex2, Bracindex3, Bracindex4, SelectType=1)
+
+                splList1, splList2 = [x for x in BaseList[index1:index2]], [x for x in MovList[index1:index2]]
 
                 # Feed the corresponding displacement to be required in the bracketted list
                 Index1, Index2 = corrRef(splList2, RefValue=MovVal)
 
-                print(index, Index1)
+                # print(index, Index1)
 
-                AbsIndex = index + Index1
+                AbsIndex = index1 + Index1
                 return AbsIndex
 
             # # get document
@@ -475,7 +562,7 @@ class Worker(QObject):
                 return value
 
             # Data Processing Section
-            #Removing the extra residue created during initializing the recorders
+            # Removing the extra residue created during initializing the recorders
             for i in range(0, len(Drift_sp_target_i) + 1):
                 if len(all_driftsX[i]) != 1:
                     all_driftsX[i].pop(0)
@@ -485,10 +572,6 @@ class Worker(QObject):
                     all_dispX[i].pop(0)
                 if len(all_dispY[i]) != 1:
                     all_dispY[i].pop(0)
-
-
-
-
 
             # Drifts
             DriftX = []
@@ -502,7 +585,6 @@ class Worker(QObject):
             # Displacements
             DisplacementX = []
             all_dispXTOP = all_dispX[list(all_dispX.keys())[-1]]
-
 
             RefDispX = all_dispX[0]
             for key, value in all_dispX.items():
@@ -536,22 +618,56 @@ class Worker(QObject):
             # except:
             #     index = BaseReactionX.index(-max(AbsouluteList(BaseReactionX)))
             # MaxBS_PseudoTime = all_times[index]
+            # print(time_steps, all_dispXTOP, len(time_steps), len(all_dispXTOP))
+            #
+            # IndexOInterest = CorresVal_IndexFinder(BaseList=time_steps, MovList=all_dispXTOP, BaseVal=float(Pseudotime),
+            #                                        MovVal=float(Displacement))
+            # print(IndexOInterest)
 
 
 
-            IndexOInterest = CorresVal_IndexFinder(BaseList=time_steps, MovList=all_dispXTOP, BaseVal=float(Pseudotime), MovVal=float(Displacement))
-            print(IndexOInterest)
-            def AbsListVal(List, FloatIndex):
-                Deci_Int = math.modf(FloatIndex)
-                a = int(Deci_Int[1])
-                b = a + 1
-                ReqValue = List[a] + Deci_Int[0] * (List[b] - List[a])
-
-                return ReqValue
-            a = AbsListVal(BaseReactionX, IndexOInterest)
-            print(a)
-                
             def Writer():
+                def AvgValue(MovList, RefValue, DataList):
+                    RefValue = abs(RefValue)
+                    def AbsListVal(List, FloatIndex):
+                        Deci_Int = math.modf(FloatIndex)
+                        a = int(Deci_Int[1])
+                        b = a + 1
+                        ReqValue = List[a] + Deci_Int[0] * (List[b] - List[a])
+
+                        return abs(ReqValue)
+
+                    def Indexed(RefList, RefValue):
+                        Indexes = []
+                        Lenlist = len(RefList)
+                        for index, value in enumerate(RefList):
+                            if index == (Lenlist - 1):
+                                break
+                            val1 = abs(RefList[index])
+                            val2 = abs(RefList[index + 1])
+                            if val1 <= RefValue:
+                                if val2 >= RefValue:
+                                    ReqIndex = index + ((abs(RefValue) - abs(val1)) / (abs(val2) - abs(val1)))
+                                    Indexes.append(ReqIndex)
+
+
+                            #if ((val1 <= RefValue) and (val2 >= RefValue)):
+                             #   ReqIndex = index + ((abs(RefValue) - abs(val1)) / (abs(val2) - abs(val1)))
+                              #  Indexes.append(ReqIndex)
+                        return Indexes
+
+                    def ValueExt(DataList, Indexex):
+                        Values = []
+                        for index in Indexex:
+                            value = AbsListVal(DataList, index)
+                            Values.append(value)
+
+                        Avg = np.average(Values)
+                        return Avg
+                    Indexes = Indexed(MovList, RefValue)
+                    Average = ValueExt(DataList, Indexes)
+                    return Average
+
                 Titles = ["Drift X", "Drift Y", "Displacement X", "Displacement Y", "Reaction Force X", "Reaction Force Y",
                           "Reaction Moment X", "Reaction Moment Y", "Rocking Angle X", "Rocking Angle Y", "Rocking Angle Z",
                           "Max Uplift", "Max Uplift Point", "Max Settlement", "Max Settlement Point"
@@ -564,7 +680,7 @@ class Worker(QObject):
                         ResultObj.write('\t'.join(Titles))
                         ResultObj.write('\n')
 
-                        Items.append(str(abs(AbsListVal(BaseReactionX, IndexOInterest))))
+                        Items.append(str(AvgValue(all_dispXTOP, float(Displacement), BaseReactionX)))
                         Items.append(str(max(AbsouluteList(BaseReactionY))))
                         Items.append(str(max(AbsouluteList(BaseMomentX))))
                         Items.append(str(max(AbsouluteList(BaseMomentY))))
@@ -582,8 +698,8 @@ class Worker(QObject):
                     ResultObj.write('\t'.join(Items))
                     ResultObj.write('\n')
                 ResultObj.close()
-            Writer()
 
+            Writer()
 
         ResultExt_Writer()
 
@@ -640,21 +756,11 @@ for line in FileData:
 #Actual enforcing the software for collection
 for index, line in enumerate(Paths):
     path = line.strip()
-
-    # Checking if the path is empty
-    try:
-        path.split("\\")[-3]
-    except:
-        continue
-    print(path, path.split("\\")[-3])
-
     BuildingName = path.split("\\")[-3]
     Earthquake = path.split("\\")[-2]
     BaseCondition = path.split("\\")[-1]
     unicode_path = path.encode('utf-8')
     items = os.listdir(unicode_path)
-
-
 
     # Extracting for the pseudo time and disp corresponding to the filecode
     Pseudotime = 0
@@ -662,9 +768,11 @@ for index, line in enumerate(Paths):
 
     Code = BuildingName + "_" + Earthquake + "_" + "Fixed"
     for dataline in LineData:
+        print(Code, dataline[0])
         if dataline[0] == Code:
             Pseudotime = dataline[2]
             Displacement = dataline[3]
+    print(Pseudotime, Displacement)
 
 
 
@@ -708,5 +816,7 @@ for index, line in enumerate(Paths):
 
 
     print(f"Well Executed for Index No {index}")
+    if index == 0:
+        break
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
