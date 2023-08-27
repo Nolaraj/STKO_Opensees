@@ -438,15 +438,28 @@ class Worker(QObject):
                         sortedDiaphragm = DataSort(DiaphragmNodes, nodePositions)
                         return sortedDiaphragm
 
-                    def FloorNodesExt(FloorHeights):
-                        #Initializing the bucket for storing the story nodes
-                        for height in FloorHeights:
-                            FloorNodes[height] = []
+                    def FloorNodesExt():
+                        FloorHeights = [0, 4, 7, 10, 13, 16]
+                        AutoExtraction  = True
 
-
-                        #Element Nodes = 2 for line element
+                        # Element Nodes = 2 for line element
                         ElementNode = 2
                         NodeId = Element_Nodes_All[ElementNode]
+
+                        Heights = []
+                        if AutoExtraction:
+                            for node in NodeId:
+                                Z_Value =  mesh.getNode(node).position.z
+                                Heights.append(Z_Value)
+                            Heights = RemoveListDuplicates(Heights)
+
+                        else:
+                            Heights = FloorHeights
+
+
+                        #Initializing the bucket for storing the story nodes
+                        for height in Heights:
+                            FloorNodes[height] = []
 
                         #Writing for the nodes
                         for node in NodeId:
@@ -454,7 +467,7 @@ class Worker(QObject):
                             if Value != None:
                                 nodeheight = mesh.getNode(node).position.z
 
-                                if nodeheight in FloorHeights:
+                                if nodeheight in Heights:
                                     FloorNodes[nodeheight].append(Value)
 
                         #Cleaning the floor lists and writing to global list of nodes
@@ -467,10 +480,9 @@ class Worker(QObject):
 
                     DiaphragmNodes = DiaphragmNodesExt()
 
-                    FloorHeights = [0, 4,7,10,13,16]
-                    FloorNodesExt(FloorHeights)
 
-                    print("I am here")
+                    FloorNodesExt()
+
 
                     #Adding and cleaning to get the all super nodes
                     for value in DiaphragmNodes:
@@ -485,6 +497,8 @@ class Worker(QObject):
 
                     All_Nodes_Super = RemoveListDuplicates(All_Nodes_Super)
                     print(len(All_Nodes_Super))
+                    
+                    print(DiaphragmNodes, FloorNodes)
 
 
 
