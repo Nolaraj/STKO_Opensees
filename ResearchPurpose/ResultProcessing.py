@@ -255,11 +255,11 @@ def GroupWriter(worksheet, ws, LiveRow, SubjectCode, IdentifierCol, SelectedRows
                         Xvalue.append(value)
                     XValues.append(Xvalue)
 
-            LiveRow = LiveRow + (Rindex + 1) + 2
+            LiveRow = LiveRow + (Rindex + 1) + 7
 
     return LiveRow, XValues
 
-def Charts(ws, YValues, XValues, XLabel, YLabel, AnchourCell = "",  Title = "" ):
+def Charts(ws, YValues, XValues, XLabel, YLabel,SeriesLabel, AnchourCell = "",  Title = "" ):
     items = 0
     properties = 0
 
@@ -280,7 +280,7 @@ def Charts(ws, YValues, XValues, XLabel, YLabel, AnchourCell = "",  Title = "" )
 
         for index, column in enumerate(XValues[0]):
             x_values = Reference(ws, min_col=column, min_row=XValues[1][0], max_row=XValues[1][1])
-            series = openpyxl.chart.Series(y_values, x_values, title_from_data=False)
+            series = openpyxl.chart.Series(y_values, x_values, title=SeriesLabel[index])
             chart.series.append(series)
 
 
@@ -289,6 +289,7 @@ def Charts(ws, YValues, XValues, XLabel, YLabel, AnchourCell = "",  Title = "" )
             Marker = Markers[index]
             series.marker.symbol = Marker
             series.marker.size = 7
+            # series.SeriesLabel = SeriesLabel[index]
 
             if Marker == "star" or Marker == "plus" or Marker == 'x':
                 series.marker.graphicalProperties.line.solidFill = SeriesColour[index]
@@ -316,8 +317,8 @@ def Charts(ws, YValues, XValues, XLabel, YLabel, AnchourCell = "",  Title = "" )
     chart.x_axis.title.tx.rich.p[0].pPr = pp
     chart.y_axis.title.tx.rich.p[0].pPr = pp
     # Adjust graph size
-    chart.width = 10     #Elselvier page halfwidth = 9cm        Writing area Only
-    chart.height = 5   #Elselvier page full height = 24 cm        Writing area Only
+    chart.width = 12     #Elselvier page halfwidth = 9cm        Writing area Only
+    chart.height = 8   #Elselvier page full height = 24 cm        Writing area Only
 
 
 
@@ -412,6 +413,7 @@ def Group_A(Keyword = "Drift X"):
                 ValuesList[0].append(i)
             CorrType = "Average"
 
+
             Correction(ws, ValuesList, CorrectionRow,CorrType,  SurrRefRow=SurrRefRow)
 
 
@@ -427,7 +429,21 @@ def Group_A(Keyword = "Drift X"):
 
         Anchor = f"{get_column_letter(ColumnEnd + 2)}{RowStart}"
 
-        Charts(ws, YValues, XValues, XLabel=Keyword, YLabel=CustomColumn[0], AnchourCell=Anchor, Title="")
+        key = Keyword.split()[0]
+        direction = Keyword.split()[1]
+        BuildingName = ws.cell(row=RowStart, column=1).value
+        EQName = ws.cell(row=RowStart, column=2).value
+        CTitle  = f"{key} of {BuildingName} building for {EQName} earthquake along {direction}"
+
+        if Keyword.split()[0] == "Displacement":
+            XLabel = Keyword.split()[0] + " (m)"
+
+        elif Keyword.split()[0] == "Drift":
+            XLabel = Keyword.split()[0]
+        else:
+            XLabel = Keyword
+
+        Charts(ws, YValues, XValues, XLabel=XLabel, YLabel=CustomColumn[0],SeriesLabel = Soils, AnchourCell=Anchor, Title=CTitle)
 
     workbook.save(OutputPath)
 
@@ -450,7 +466,7 @@ ExcelWriter(ResultFiles, OutputPath, Sheetname)
 
 Buildings = [ "L1", "L2", "L3", "L4", "R", "S"]
 Earthquakes = ["Gorkha", "Northridge", "San Fernando"]
-Soils = ["Fixed", "Soft", "Medium", "Hard"]
+Soils = ["Fixed", "Hard", "Medium",  "Soft"]
 ResultsKey = ["Drift X",'Drift Y','Displacement X','Displacement Y','Reaction Force X','Reaction Force Y','Reaction Moment X','Reaction Moment Y','Rocking Angle X','Rocking Angle Y','Rocking Angle Z','Max Uplift','Max Uplift Point','Max Settlement','Max Settlement Point']
 
 
@@ -460,5 +476,5 @@ Markers = [ "x", "triangle", "square",  "circle",  "plus", "diamond", "star", "d
 Dashes = ["solid", "sysDash", "dash", "dot", "sysDot", "lgDashDot",  "dashDot", "lgDashDotDot", "sysDashDotDot", "lgDash", "sysDashDot"]
 
 
-for key in ResultsKey[:4]:
-    Group_A(Keyword = key)
+# for key in ResultsKey[:4]:
+#     Group_A(Keyword = key)
