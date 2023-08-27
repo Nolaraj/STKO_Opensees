@@ -147,7 +147,6 @@ class Worker(QObject):
                 if num_steps == 0:
                     raise Exception("No steps in this stage")
 
-
                 def IDs_Finder(mesh):
                     tolerance = 1.0e-8
 
@@ -156,7 +155,7 @@ class Worker(QObject):
                     Element_Nodes_All = {}
                     FloorNodes = {}
 
-                    #Diaphragm Nodes
+                    # Diaphragm Nodes
                     def Node_Z_GT_0(node, node_id, Operation="Plus"):
                         if Operation == "Plus":
                             if node.position.z >= 0 + tolerance:
@@ -165,6 +164,7 @@ class Worker(QObject):
                         else:
                             if node.position.z >= 0 - tolerance:
                                 return node_id
+
                     def CheckTolerance(Ref, Tolerance, CheckValue):
                         Ref1 = Ref + Tolerance
                         Ref2 = Ref - Tolerance
@@ -173,17 +173,20 @@ class Worker(QObject):
                             return True
                         else:
                             return False
+
                     def RemoveListDuplicates(List):
                         Set = set(List)
                         return [x for x in Set]
+
                     def DataSort(MainData, SortingDataset):
                         SortedData = [x for _, x in sorted(zip(SortingDataset, MainData))]
                         return SortedData
+
                     def ListUnion(List1, List2):
                         union_list = list(set(List1) | set(List2))
                         return union_list
 
-                    #All Element Nodes
+                    # All Element Nodes
                     ElementNodesNo = [2, 8]
                     for eleNodes in ElementNodesNo:
                         Element_Nodes_All[eleNodes] = []
@@ -204,7 +207,7 @@ class Worker(QObject):
                         if Value != None:
                             All_Nodes_Super.append(Value)
 
-                    #Adding for all the element nodes with z coordineates greater than (0+ tolerance)
+                    # Adding for all the element nodes with z coordineates greater than (0+ tolerance)
                     for ele_id, ele in mesh.elements.items():
                         ElementNodesNo = [2, 8]
                         for eleNodes in ElementNodesNo:
@@ -214,17 +217,15 @@ class Worker(QObject):
                                     if Value != None:
                                         Element_Nodes_Super.append(Value)
 
-
                     def DiaphragmNodesExt():
-                        #Freenodes also referred to as Diaphragm nodes (Doesnot include the diaphragm nodes at the base)
+                        # Freenodes also referred to as Diaphragm nodes (Doesnot include the diaphragm nodes at the base)
                         FreeNodes = [x for x in All_Nodes_Super if x not in Element_Nodes_Super]
 
-
-                        #Checking for coOrdinates consistency of the Diaphragm nodes (exluding the base diaphragm node) for X and Y value
+                        # Checking for coOrdinates consistency of the Diaphragm nodes (exluding the base diaphragm node) for X and Y value
                         DiaX, DiaY = 0.00, 0.00
-                        for index,  node in enumerate(FreeNodes):
+                        for index, node in enumerate(FreeNodes):
                             CoOrdinates = mesh.getNode(node).position
-                            x= CoOrdinates[0]
+                            x = CoOrdinates[0]
                             y = CoOrdinates[1]
                             if index == 0:
                                 DiaX, DiaY = x, y
@@ -234,8 +235,7 @@ class Worker(QObject):
                                 if CheckTolerance(DiaY, tolerance, y) is False:
                                     print(f"Diaphragm Tolerance not meet along Y for node index {node}")
 
-
-                        #Using the above extracted diaphragm nodes after checking for consistency, extracting the base diaphragm node
+                        # Using the above extracted diaphragm nodes after checking for consistency, extracting the base diaphragm node
                         # from all nodes with Z coordinates greater than (0 - tolerance) and with plan Coordinates exact with teh
                         # previously extracted DiaX and DiaY value.
                         for node_id, node in mesh.nodes.items():
@@ -252,7 +252,6 @@ class Worker(QObject):
                                     if Identifier:
                                         FreeNodes.append(node_id)
 
-
                         # Arranging the Diaohragm Nodes
                         DiaphragmNodes = RemoveListDuplicates(FreeNodes)
 
@@ -262,41 +261,47 @@ class Worker(QObject):
                         sortedDiaphragm = DataSort(DiaphragmNodes, nodePositions)
                         return sortedDiaphragm
 
-                    def FloorNodesExt(FloorHeights):
-                        #Initializing the bucket for storing the story nodes
-                        for height in FloorHeights:
-                            FloorNodes[height] = []
+                    def FloorNodesExt():
+                        FloorHeights = [0, 4, 7, 10, 13, 16]
+                        AutoExtraction = True
 
-
-                        #Element Nodes = 2 for line element
+                        # Element Nodes = 2 for line element
                         ElementNode = 2
                         NodeId = Element_Nodes_All[ElementNode]
 
-                        #Writing for the nodes
+                        Heights = []
+                        if AutoExtraction:
+                            for node in NodeId:
+                                Z_Value = mesh.getNode(node).position.z
+                                Heights.append(Z_Value)
+                            Heights = RemoveListDuplicates(Heights)
+
+                        else:
+                            Heights = FloorHeights
+
+                        # Initializing the bucket for storing the story nodes
+                        for height in Heights:
+                            FloorNodes[height] = []
+
+                        # Writing for the nodes
                         for node in NodeId:
                             Value = Node_Z_GT_0(mesh.getNode(node), mesh.getNode(node).id, Operation="Subtract")
                             if Value != None:
                                 nodeheight = mesh.getNode(node).position.z
 
-                                if nodeheight in FloorHeights:
+                                if nodeheight in Heights:
                                     FloorNodes[nodeheight].append(Value)
 
-                        #Cleaning the floor lists and writing to global list of nodes
+                        # Cleaning the floor lists and writing to global list of nodes
                         for key, value in FloorNodes.items():
                             Value = RemoveListDuplicates(value)
                             FloorNodes[key] = Value
 
-
-
-
                     DiaphragmNodes = DiaphragmNodesExt()
 
-                    FloorHeights = [0, 4,7,10,13,16]
-                    FloorNodesExt(FloorHeights)
+                    FloorNodesExt()
 
-                    print("I am here")
-
-                    #Adding and cleaning to get the all super nodes
+                    # Adding and cleaning to get the all super nodes
                     for value in DiaphragmNodes:
                         All_Nodes_Super.append(value)
 
@@ -310,11 +315,9 @@ class Worker(QObject):
                     All_Nodes_Super = RemoveListDuplicates(All_Nodes_Super)
                     print(len(All_Nodes_Super))
 
-
-
+                    print(DiaphragmNodes, FloorNodes)
 
                     return DiaphragmNodes, FloorNodes
-
 
                 process_counter = 1
 
