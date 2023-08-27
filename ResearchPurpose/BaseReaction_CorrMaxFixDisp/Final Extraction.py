@@ -73,103 +73,19 @@ class Worker(QObject):
     def run(self, ModelInfo):
 
         def ModelPara():
-            DiaphragmNodes = []
-            BaseNodes = []
-
             if BaseCondition == "Fixed":
-                if BuildingName == "S":
-                    DiaphragmNodes = [217, 218, 219, 220, 221, 222]
-                    BaseNodes = [112, 186, 122, 178, 164, 108, 172, 167, 169, 181, 117, 182, 189, 193, 195, 196, 132,
-                                 198,
-                                 204, 140, 208, 211, 147, 107, 121, 127, 128, 136, 139, 146, 149, 154, 159, 162, 214,
-                                 216]
-                elif BuildingName == "L1":
-                    DiaphragmNodes = [199, 200, 201, 202, 203, 204]
-                    BaseNodes = [179, 115, 181, 117, 119, 183, 106, 170, 186, 172, 184, 185, 187, 189, 191, 193, 194,
-                                 195,
-                                 83, 86, 89, 96, 101, 105, 169, 109, 176, 177, 178, 180, 182, 197, 198]
-
-                elif BuildingName == "L2":
-                    DiaphragmNodes = [181, 182, 183, 184, 185, 186]
-                    BaseNodes = [98, 100, 164, 101, 149, 151, 160, 168, 161, 178, 179, 180, 66, 69, 72, 79, 84, 148, 88,
-                                 89,
-                                 153, 92, 156, 154, 155, 157, 158, 159, 171, 172]
-
-                elif BuildingName == "L3":
-                    DiaphragmNodes = [163, 164, 165, 166, 167, 168]
-                    BaseNodes = [75, 77, 124, 134, 142, 138, 162, 160, 161, 45, 48, 51, 55, 59, 123, 64, 128, 65, 129,
-                                 68,
-                                 132, 127, 130, 131, 133, 144, 145]
-
-
-                elif BuildingName == "L4":
-                    DiaphragmNodes = [145, 146, 147, 148, 149, 150]
-                    BaseNodes = [73, 105, 144, 80, 112, 102, 107, 108, 114, 127, 129, 130, 131, 134, 70, 135, 136, 142,
-                                 143,
-                                 74, 76, 77, 104, 109]
-
-
-                elif BuildingName == "R":
-                    DiaphragmNodes = [109, 110, 111, 112, 113, 114]
-                    BaseNodes = [65, 85, 101, 88, 91, 99, 107, 92, 100, 58, 61, 87, 93, 102, 103, 104, 105, 108]
-
-                return DiaphragmNodes, BaseNodes, False
+                return  False
 
             else:
-                if BuildingName == "S":
-                    DiaphragmNodes = [244, 245, 273, 328, 384, 356]
-                    BaseNodes = [134, 199, 135, 223, 159, 139, 155, 208, 144, 148, 149, 213, 154, 163, 166, 167, 231,
-                                 173, 174,
-                                 238, 176, 181, 186, 189, 191, 194, 196, 205, 209, 216, 220, 222, 225, 235, 241, 243]
-
-                elif BuildingName == "L1":
-                    DiaphragmNodes = [226, 227, 255, 310, 366, 338]
-                    BaseNodes = [110, 206, 142, 113, 116, 196, 132, 123, 136, 128, 133, 197, 144, 208, 146, 210, 199,
-                                 203, 204,
-                                 205, 207, 209, 211, 212, 213, 214, 216, 218, 220, 221, 222, 224, 225]
-
-                elif BuildingName == "L2":
-                    DiaphragmNodes = [208, 209, 237, 292, 348, 320]
-                    BaseNodes = [93, 125, 96, 99, 115, 106, 111, 175, 183, 119, 116, 180, 127, 191, 128, 176, 178, 181,
-                                 182,
-                                 184, 185, 186, 187, 188, 195, 198, 199, 205, 206, 207]
-
-                elif BuildingName == "L3":
-                    DiaphragmNodes = [190, 191, 219, 274, 330, 302]
-                    BaseNodes = [72, 75, 155, 91, 78, 150, 86, 102, 82, 92, 156, 95, 159, 104, 151, 154, 157, 158, 160,
-                                 161,
-                                 165, 169, 171, 172, 187, 188, 189]
-
-                elif BuildingName == "L4":
-                    DiaphragmNodes = [172, 173, 201, 256, 312, 284]
-                    BaseNodes = [161, 97, 129, 100, 132, 101, 103, 104, 131, 107, 171, 134, 135, 136, 139, 141, 154,
-                                 156, 157,
-                                 158, 162, 163, 169, 170]
-
-                elif BuildingName == "R":
-                    DiaphragmNodes = [117, 118, 127, 191, 163, 219]
-                    BaseNodes = [66, 69, 93, 101, 73, 95, 96, 99, 100, 107, 108, 109, 110, 111, 112, 113, 115, 116]
-
-                return DiaphragmNodes, BaseNodes, True
+                return  True
 
         BuildingName = ModelInfo[0]
         FolderPath = ModelInfo[1]
         ResultObj = ModelInfo[2]
         Index = ModelInfo[3]
         BaseCondition = ModelInfo[4]
-        Pseudotime = ModelInfo[5][0]
-        Displacement = ModelInfo[5][1]
-        print(Pseudotime, Displacement)
 
-        DiaphragmNodes, BaseNodes, SSI_Analysis = ModelPara()
-
-        # doc = App.postDocument()
-        # doc.clearPlotGroups()
-        # doc.clearCharts()
-        # doc.clearChartData()
-        # doc.commitChanges()
-        # doc.dirty = True
-        # doc.select(None)
+        SSI_Analysis = ModelPara()
 
         # Function for Extraction of results, results processing and writing to teh file provided
         def ResultExt_Writer():
@@ -351,7 +267,6 @@ class Worker(QObject):
                 AbsIndex = index1 + Index1
                 return AbsIndex
 
-
             all_times = []
             Drift_sp_target_i = []
             Drift_sp_target_j = []
@@ -402,11 +317,187 @@ class Worker(QObject):
                 opt = MpcOdbVirtualResultEvaluationOptions()
                 opt.stage = last_stage
 
+
+                # evaluate all results for each stage
+                num_steps = len(all_steps)
+                if num_steps == 0:
+                    raise Exception("No steps in this stage")
+
+
+                def IDs_Finder(mesh):
+                    tolerance = 1.0e-8
+
+                    All_Nodes_Super = []
+                    Element_Nodes_Super = []
+                    Element_Nodes_All = {}
+                    FloorNodes = {}
+
+                    #Diaphragm Nodes
+                    def Node_Z_GT_0(node, node_id, Operation="Plus"):
+                        if Operation == "Plus":
+                            if node.position.z >= 0 + tolerance:
+                                return node_id
+
+                        else:
+                            if node.position.z >= 0 - tolerance:
+                                return node_id
+                    def CheckTolerance(Ref, Tolerance, CheckValue):
+                        Ref1 = Ref + Tolerance
+                        Ref2 = Ref - Tolerance
+
+                        if ((CheckValue >= Ref1 and CheckValue <= Ref2) or (CheckValue >= Ref2 and CheckValue <= Ref1)):
+                            return True
+                        else:
+                            return False
+                    def RemoveListDuplicates(List):
+                        Set = set(List)
+                        return [x for x in Set]
+                    def DataSort(MainData, SortingDataset):
+                        SortedData = [x for _, x in sorted(zip(SortingDataset, MainData))]
+                        return SortedData
+                    def ListUnion(List1, List2):
+                        union_list = list(set(List1) | set(List2))
+                        return union_list
+
+                    #All Element Nodes
+                    ElementNodesNo = [2, 8]
+                    for eleNodes in ElementNodesNo:
+                        Element_Nodes_All[eleNodes] = []
+
+                    for ele_id, ele in mesh.elements.items():
+                        for eleNodes in ElementNodesNo:
+                            if len(ele.nodes) == eleNodes:
+                                for i in range(eleNodes):
+                                    Element_Nodes_All[eleNodes].append(ele.nodes[i].id)
+
+                    for key, value in Element_Nodes_All.items():
+                        Value = RemoveListDuplicates(value)
+                        Element_Nodes_All[key] = Value
+
+                    # Adding for all the nodes (including free nodes) with z coordinates greater than (0 + tolerance)
+                    for node_id, node in mesh.nodes.items():
+                        Value = Node_Z_GT_0(node, node_id)
+                        if Value != None:
+                            All_Nodes_Super.append(Value)
+
+                    #Adding for all the element nodes with z coordineates greater than (0+ tolerance)
+                    for ele_id, ele in mesh.elements.items():
+                        ElementNodesNo = [2, 8]
+                        for eleNodes in ElementNodesNo:
+                            if len(ele.nodes) == eleNodes:
+                                for i in range(eleNodes):
+                                    Value = Node_Z_GT_0(ele.nodes[i], ele.nodes[i].id)
+                                    if Value != None:
+                                        Element_Nodes_Super.append(Value)
+
+
+                    def DiaphragmNodesExt():
+                        #Freenodes also referred to as Diaphragm nodes (Doesnot include the diaphragm nodes at the base)
+                        FreeNodes = [x for x in All_Nodes_Super if x not in Element_Nodes_Super]
+
+
+                        #Checking for coOrdinates consistency of the Diaphragm nodes (exluding the base diaphragm node) for X and Y value
+                        DiaX, DiaY = 0.00, 0.00
+                        for index,  node in enumerate(FreeNodes):
+                            CoOrdinates = mesh.getNode(node).position
+                            x= CoOrdinates[0]
+                            y = CoOrdinates[1]
+                            if index == 0:
+                                DiaX, DiaY = x, y
+                            else:
+                                if CheckTolerance(DiaX, tolerance, x) is False:
+                                    print(f"Diaphragm Tolerance not meet along X for node index {node}")
+                                if CheckTolerance(DiaY, tolerance, y) is False:
+                                    print(f"Diaphragm Tolerance not meet along Y for node index {node}")
+
+
+                        #Using the above extracted diaphragm nodes after checking for consistency, extracting the base diaphragm node
+                        # from all nodes with Z coordinates greater than (0 - tolerance) and with plan Coordinates exact with teh
+                        # previously extracted DiaX and DiaY value.
+                        for node_id, node in mesh.nodes.items():
+                            x = node.position.x
+                            y = node.position.y
+
+                            if CheckTolerance(DiaX, tolerance, x) and CheckTolerance(DiaY, tolerance, y):
+                                if Node_Z_GT_0(node, node_id, Operation="Subtract"):
+                                    Identifier = True
+                                    for key, value in Element_Nodes_All.items():
+                                        if node_id in value:
+                                            Identifier = False
+
+                                    if Identifier:
+                                        FreeNodes.append(node_id)
+
+
+                        # Arranging the Diaohragm Nodes
+                        DiaphragmNodes = RemoveListDuplicates(FreeNodes)
+
+                        nodePositions = []
+                        for i in range(len(DiaphragmNodes)):
+                            nodePositions.append(displacement_field.mesh.getNode(DiaphragmNodes[i]).position.z)
+                        sortedDiaphragm = DataSort(DiaphragmNodes, nodePositions)
+                        return sortedDiaphragm
+
+                    def FloorNodesExt(FloorHeights):
+                        #Initializing the bucket for storing the story nodes
+                        for height in FloorHeights:
+                            FloorNodes[height] = []
+
+
+                        #Element Nodes = 2 for line element
+                        ElementNode = 2
+                        NodeId = Element_Nodes_All[ElementNode]
+
+                        #Writing for the nodes
+                        for node in NodeId:
+                            Value = Node_Z_GT_0(mesh.getNode(node), mesh.getNode(node).id, Operation="Subtract")
+                            if Value != None:
+                                nodeheight = mesh.getNode(node).position.z
+
+                                if nodeheight in FloorHeights:
+                                    FloorNodes[nodeheight].append(Value)
+
+                        #Cleaning the floor lists and writing to global list of nodes
+                        for key, value in FloorNodes.items():
+                            Value = RemoveListDuplicates(value)
+                            FloorNodes[key] = Value
+
+
+
+
+                    DiaphragmNodes = DiaphragmNodesExt()
+
+                    FloorHeights = [0, 4,7,10,13,16]
+                    FloorNodesExt(FloorHeights)
+
+                    print("I am here")
+
+                    #Adding and cleaning to get the all super nodes
+                    for value in DiaphragmNodes:
+                        All_Nodes_Super.append(value)
+
+                    Values = []
+                    for key, value in FloorNodes.items():
+                        for val in value:
+                            Values.append(val)
+                    for val in Values:
+                        All_Nodes_Super.append(val)
+
+                    All_Nodes_Super = RemoveListDuplicates(All_Nodes_Super)
+                    print(len(All_Nodes_Super))
+
+
+
+
+                    return DiaphragmNodes, FloorNodes
+
+
                 process_counter = 1
 
                 # evaluate all results for each stage
                 num_steps = len(all_steps)
-                for step_counter in range(num_steps):
+                num_steps = 20
+                for index, step_counter in enumerate(range(num_steps)):
 
                     # get step id and time
                     step_id = all_steps[step_counter]
@@ -427,14 +518,13 @@ class Worker(QObject):
                     reactionMoment_field = reactionMoment.evaluate(opt)
                     rotation_field = rotation.evaluate(opt)
 
-                    if process_counter == 1:
-                        # Arranging the Diaohragm Nodes
-                        nodePositions = []
-                        for i in range(len(DiaphragmNodes)):
-                            nodePositions.append(displacement_field.mesh.getNode(DiaphragmNodes[i]).position.z)
 
-                        sortedDiaphragm = [x for _, x in sorted(zip(nodePositions, DiaphragmNodes))]
-                        print(sortedDiaphragm)
+
+                    if index == 0:
+                        mesh = displacement_field.mesh
+                        sortedDiaphragm, FloorNodes = IDs_Finder(mesh)
+                        BaseNodes = FloorNodes[0]
+
 
                         # open the files for the recorders
 
@@ -572,11 +662,15 @@ class Worker(QObject):
 
 
             Extractor()
+
+
+
+
+            # Data Processing Section
             def AbsouluteList(Data):
                 value = [abs(ele) for ele in Data]
                 return value
 
-            # Data Processing Section
             # Removing the extra residue created during initializing the recorders
             for i in range(0, len(Drift_sp_target_i) + 1):
                 def FirstPopper(List):
