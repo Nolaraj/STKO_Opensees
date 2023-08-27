@@ -4,6 +4,7 @@ from time import sleep
 from PySide2.QtCore import Qt, QObject, Signal, Slot, QThread, QEventLoop
 from PySide2.QtWidgets import QDialog, QLabel, QProgressBar, QVBoxLayout, QApplication
 import os
+import math
 
 use_dialog = True  # True = Dialog, False = Event Loop
 
@@ -182,13 +183,14 @@ class Worker(QObject):
             all_driftsY = {}
             all_dispX = {}
             all_dispY = {}
+            all_RotZ = {}
             BaseReactionX = []
             BaseReactionY = []
             BaseMomentX = []
             BaseMomentY = []
-            RotationX = []
-            RotationY = []
-            RotationZ = []
+            Rotation_X = []
+            Rotation_Y = []
+            Rotation_Z = []
             Uz_Max = []
             Uz_Max_Node = []
             Uz_Min = []
@@ -218,6 +220,7 @@ class Worker(QObject):
 
             # evaluate all results for each stage
             num_steps = len(all_steps)
+            num_steps = 20
             for step_counter in range(num_steps):
 
                 # get step id and time
@@ -266,6 +269,8 @@ class Worker(QObject):
                         all_dispX[i] = [0]
                         all_dispY[i] = [0]
 
+                        all_RotZ[i] = [0]
+
                     process_counter += 1
 
                 # This is how you extract data from a nodal result at one or multiple nodes
@@ -288,6 +293,11 @@ class Worker(QObject):
                     i_Ux = displacement_field[i_row, 0]
                     j_Ux = displacement_field[j_row, 0]
 
+                    #Rotation Z
+                    i_Rx = rotation_field[i_row, 2]
+                    j_Rx = rotation_field[j_row, 2]
+
+
                     # Drift X
                     driftx = (j_Ux - i_Ux) / dZ
 
@@ -305,9 +315,13 @@ class Worker(QObject):
                     all_dispX[node_counter].append(i_Ux)
                     all_dispY[node_counter].append(i_Uy)
 
+                    all_RotZ[node_counter].append(i_Rx)
+
                     if node_counter == len(Drift_sp_target_i) - 1:
                         all_dispX[node_counter + 1].append(j_Ux)
                         all_dispY[node_counter + 1].append(j_Uy)
+
+                        all_RotZ[node_counter + 1].append(j_Rx)
 
                 # Base Reactions and Deformations
                 i_Rx = 0
@@ -363,9 +377,9 @@ class Worker(QObject):
                 BaseReactionY.append(i_Ry)
                 BaseMomentX.append(i_Mx)
                 BaseMomentY.append(i_My)
-                RotationX.append(i_Rox / len(BaseNodes))
-                RotationY.append(i_Roy / len(BaseNodes))
-                RotationZ.append(i_Roz / len(BaseNodes))
+                Rotation_X.append(i_Rox / len(BaseNodes))
+                Rotation_Y.append(i_Roy / len(BaseNodes))
+                Rotation_Z.append(i_Roz / len(BaseNodes))
 
                 Uz_Max.append(i_Uz_Max)
                 Uz_Max_Node.append(i_Uz_Max_Node)
@@ -377,34 +391,71 @@ class Worker(QObject):
                 return value
 
             # Data Processing Section
+            # Removing the extra residue created during initializing the recorders
+            for i in range(0, len(Drift_sp_target_i) + 1):
+                def FirstPopper(List):
+                    if len(List[i]) != 1:
+                        List[i].pop(0)
+
+                FirstPopper(all_driftsX)
+                FirstPopper(all_driftsY)
+                FirstPopper(all_dispX)
+                FirstPopper(all_dispY)
+                FirstPopper(all_RotZ)
+
+            # Maximum of the all time steps for each key, Provide set with key as diaphragm node and Value as list of TS value
+            def MaxTimeStep(DefinedSet, Displacement = False):
+
+                MaxValue = []
+                if Displacement == False:
+                    for key, value in DefinedSet.items():
+                        MaxValue.append(max(AbsouluteList(value)))
+                    return MaxValue
+
+                if Displacement == True:
+                    RefDispX = DefinedSet[0]
+                    for key, value in DefinedSet.items():
+                        RelDispX = value
+                        if SSI_Analysis:
+                            RelDispX = [a - b for a, b in zip(value, RefDispX)]
+
+                        MaxValue.append(max(AbsouluteList(RelDispX)))
+                    return MaxValue
 
             # Drifts
-            DriftX = []
-            for key, value in all_driftsX.items():
-                DriftX.append(max(AbsouluteList(value)))
+            DriftX =  MaxTimeStep(all_driftsX)
+            DriftY = MaxTimeStep(all_driftsY)
+            DisplacementX = MaxTimeStep(all_dispX, Displacement = True)
+            DisplacementY = MaxTimeStep(all_dispY, Displacement = True)
+            RotationZ = MaxTimeStep(all_RotZ)
 
-            DriftY = []
-            for key, value in all_driftsY.items():
-                DriftY.append(max(AbsouluteList(value)))
 
-            # Displacements
-            DisplacementX = []
-            RefDispX = all_dispX[0]
-            for key, value in all_dispX.items():
-                RelDispX = value
-                if SSI_Analysis:
-                    RelDispX = [a - b for a, b in zip(value, RefDispX)]
-
-                DisplacementX.append(max(AbsouluteList(RelDispX)))
-
-            DisplacementY = []
-            RefDispY = all_dispY[0]
-            for key, value in all_dispY.items():
-                RelDispY = value
-                if SSI_Analysis:
-                    RelDispY = [a - b for a, b in zip(value, RefDispY)]
-
-                DisplacementY.append(max(AbsouluteList(RelDispY)))
+            # DriftX = []
+            # for key, value in all_driftsX.items():
+            #     DriftX.append(max(AbsouluteList(value)))
+            # 
+            # DriftY = []
+            # for key, value in all_driftsY.items():
+            #     DriftY.append(max(AbsouluteList(value)))
+            # 
+            # # Displacements
+            # DisplacementX = []
+            # RefDispX = all_dispX[0]
+            # for key, value in all_dispX.items():
+            #     RelDispX = value
+            #     if SSI_Analysis:
+            #         RelDispX = [a - b for a, b in zip(value, RefDispX)]
+            # 
+            #     DisplacementX.append(max(AbsouluteList(RelDispX)))
+            # 
+            # DisplacementY = []
+            # RefDispY = all_dispY[0]
+            # for key, value in all_dispY.items():
+            #     RelDispY = value
+            #     if SSI_Analysis:
+            #         RelDispY = [a - b for a, b in zip(value, RefDispY)]
+            # 
+            #     DisplacementY.append(max(AbsouluteList(RelDispY)))
 
             # Uplifts and Settlements
             Max_Uplift = max(Uz_Max)
@@ -424,37 +475,99 @@ class Worker(QObject):
 
             print("Max, Settlement Point", "Max Uplift", Max_Uplift, Max_Settlement)
 
-            # #_________________Writing Starts from here
-            Titles = ["Drift X", "Drift Y", "Displacement X", "Displacement Y", "Reaction Force X", "Reaction Force Y",
-                      "Reaction Moment X", "Reaction Moment Y", "Rocking Angle X", "Rocking Angle Y", "Rocking Angle Z",
-                      "Max Uplift", "Max Uplift Point", "Max Settlement", "Max Settlement Point"
-                      ]
-            for index, value in enumerate(DriftX):
+            #Writing starts from here
+            def Writer():
+                # def AvgValue(MovList, RefValue, DataList):
+                #     RefValue = abs(RefValue)
+                #     def AbsListVal(List, FloatIndex):
+                #         Deci_Int = math.modf(FloatIndex)
+                #         a = int(Deci_Int[1])
+                #         b = a + 1
+                #         ReqValue = List[a] + Deci_Int[0] * (List[b] - List[a])
+                #
+                #         return abs(ReqValue)
+                #
+                #     def Indexed(RefList, RefValue):
+                #         Indexes = []
+                #         Lenlist = len(RefList)
+                #         for index, value in enumerate(RefList):
+                #             if index == (Lenlist - 1):
+                #                 break
+                #             val1 = abs(RefList[index])
+                #             val2 = abs(RefList[index + 1])
+                #             if val1 <= RefValue:
+                #                 if val2 >= RefValue:
+                #                     ReqIndex = index + ((abs(RefValue) - abs(val1)) / (abs(val2) - abs(val1)))
+                #                     Indexes.append(ReqIndex)
+                #
+                #
+                #             #if ((val1 <= RefValue) and (val2 >= RefValue)):
+                #              #   ReqIndex = index + ((abs(RefValue) - abs(val1)) / (abs(val2) - abs(val1)))
+                #               #  Indexes.append(ReqIndex)
+                #         return Indexes
+                #
+                #     def ValueExt(DataList, Indexex):
+                #         Values = []
+                #         for index in Indexex:
+                #             value = AbsListVal(DataList, index)
+                #             Values.append(value)
+                #
+                #         Avg = np.average(Values)
+                #         return Avg
+                #     Indexes = Indexed(MovList, RefValue)
+                #     Average = ValueExt(DataList, Indexes)
+                #     return Average
 
-                Items = [str(DriftX[index]), str(DriftY[index]), str(DisplacementX[index]), str(DisplacementY[index])]
+                Titles = ["Drift X", "Drift Y", "Displacement X", "Displacement Y","Rotation Z", "Reaction Force X", "Reaction Force Y",
+                          "Reaction Moment X", "Reaction Moment Y", "Rocking Angle X", "Rocking Angle Y", "Rocking Angle Z",
+                          "Max Uplift", "Max Uplift Point", "Max Settlement", "Max Settlement Point"
+                          ]
+                for index, value in enumerate(DriftX):
+                    print(DriftX)
+                    print(DriftY)
+                    print(DisplacementX)
+                    print(DisplacementY)
 
-                if index == 0:
-                    ResultObj.write('\t'.join(Titles))
+
+
+
+                    print(RotationZ)
+                    print(BaseReactionX)
+                    print(Rotation_X)
+                    print(Rotation_Y)
+                    print(Rotation_Z)
+                    print(MaxBS_PseudoTime)
+                    print(ResultObj)
+
+
+                    Items = [str(DriftX[index]), str(DriftY[index]), str(DisplacementX[index]), str(DisplacementY[index]), str(RotationZ[index])]
+
+                    if index == 0:
+                        ResultObj.write('\t'.join(Titles))
+                        ResultObj.write('\n')
+
+                        # Items.append(str(AvgValue(all_dispXTOP, float(Displacement), BaseReactionX)))
+                        Items.append(str(max(AbsouluteList(BaseReactionX))))
+                        Items.append(str(max(AbsouluteList(BaseReactionY))))
+                        Items.append(str(max(AbsouluteList(BaseMomentX))))
+                        Items.append(str(max(AbsouluteList(BaseMomentY))))
+                        Items.append(str(max(AbsouluteList(Rotation_X))))
+                        Items.append(str(max(AbsouluteList(Rotation_Y))))
+                        Items.append(str(max(AbsouluteList(Rotation_Z))))
+                        Items.append(str(Max_Uplift))
+                        Items.append(str(Max_Uplift_Point))
+                        Items.append(str(Max_Settlement))
+                        Items.append(str(Max_Settlement_Point))
+
+                    if index == 1:
+                        Items.append(str(MaxBS_PseudoTime))
+                    print("All items cretaeed")
+
+                    ResultObj.write('\t'.join(Items))
                     ResultObj.write('\n')
+                ResultObj.close()
 
-                    Items.append(str(max(AbsouluteList(BaseReactionX))))
-                    Items.append(str(max(AbsouluteList(BaseReactionY))))
-                    Items.append(str(max(AbsouluteList(BaseMomentX))))
-                    Items.append(str(max(AbsouluteList(BaseMomentY))))
-                    Items.append(str(max(AbsouluteList(RotationX))))
-                    Items.append(str(max(AbsouluteList(RotationY))))
-                    Items.append(str(max(AbsouluteList(RotationZ))))
-                    Items.append(str(Max_Uplift))
-                    Items.append(str(Max_Uplift_Point))
-                    Items.append(str(Max_Settlement))
-                    Items.append(str(Max_Settlement_Point))
-
-                if index == 1:
-                    Items.append(str(MaxBS_PseudoTime))
-
-                ResultObj.write('\t'.join(Items))
-                ResultObj.write('\n')
-            ResultObj.close()
+            Writer()
 
         ResultExt_Writer()
 
@@ -544,5 +657,6 @@ for index, line in enumerate(Paths):
 
 
     print(f"Well Executed for Index No {index}")
+    break
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
