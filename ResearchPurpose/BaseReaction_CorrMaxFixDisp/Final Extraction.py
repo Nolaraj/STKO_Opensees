@@ -351,13 +351,8 @@ class Worker(QObject):
                 AbsIndex = index1 + Index1
                 return AbsIndex
 
-            # # get document
-            doc = App.postDocument()
-            # get first database
-            if len(doc.databases) == 0:
-                raise Exception("You need a database with ID = 1 for this script")
-            db = doc.getDatabase(Index + 1)
 
+            all_times = []
             Drift_sp_target_i = []
             Drift_sp_target_j = []
 
@@ -365,198 +360,218 @@ class Worker(QObject):
             all_driftsY = {}
             all_dispX = {}
             all_dispY = {}
+            all_RotZ = {}
             BaseReactionX = []
             BaseReactionY = []
             BaseMomentX = []
             BaseMomentY = []
-            RotationX = []
-            RotationY = []
-            RotationZ = []
+            Rotation_X = []
+            Rotation_Y = []
+            Rotation_Z = []
             Uz_Max = []
             Uz_Max_Node = []
             Uz_Min = []
             Uz_Min_Node = []
 
-            # get all the results that we need to reproduce the recorders
-            # you wrote manually in OpenSees.
-            #
-            # for displacement we can get the first results that containts the word "Displacement"
-            # since there is only one of them
-            displacement = db.getNodalResult("Displacement", match=MpcOdb.Contains)
-            reactionForce = db.getNodalResult("Reaction Force", match=MpcOdb.Contains)
-            reactionMoment = db.getNodalResult("Reaction Moment", match=MpcOdb.Contains)
-            rotation = db.getNodalResult("Rotation", match=MpcOdb.Contains)
+            def Extractor():
+                # # get document
+                doc = App.postDocument()
+                # get first database
+                if len(doc.databases) == 0:
+                    raise Exception("You need a database with ID = 1 for this script")
+                db = doc.getDatabase(Index + 1)
 
-            # create evaluation options
-            # here we want to extract data for all steps of the last stage
-            all_stages = db.getStageIDs()  # get all model stages
-            last_stage = all_stages[-1]  # get the last stage (pushover)
-            all_steps = db.getStepIDs(last_stage)  # get all steps of the last stage
-            all_times = db.getStepTimes(last_stage)  # get all step times of the last stage
-            # initialize the evaluation options with the last stage
-            opt = MpcOdbVirtualResultEvaluationOptions()
-            opt.stage = last_stage
+                # get all the results that we need to reproduce the recorders
+                # you wrote manually in OpenSees.
+                #
+                # for displacement we can get the first results that containts the word "Displacement"
+                # since there is only one of them
+                displacement = db.getNodalResult("Displacement", match=MpcOdb.Contains)
+                reactionForce = db.getNodalResult("Reaction Force", match=MpcOdb.Contains)
+                reactionMoment = db.getNodalResult("Reaction Moment", match=MpcOdb.Contains)
+                rotation = db.getNodalResult("Rotation", match=MpcOdb.Contains)
 
-            process_counter = 1
+                # create evaluation options
+                # here we want to extract data for all steps of the last stage
+                all_stages = db.getStageIDs()  # get all model stages
+                last_stage = all_stages[-1]  # get the last stage (pushover)
+                all_steps = db.getStepIDs(last_stage)  # get all steps of the last stage
+                for value in db.getStepTimes(last_stage):
+                    all_times.append(value)
+                # initialize the evaluation options with the last stage
+                opt = MpcOdbVirtualResultEvaluationOptions()
+                opt.stage = last_stage
 
-            # evaluate all results for each stage
-            num_steps = len(all_steps)
-            time_steps = []
-            for step_counter in range(num_steps):
+                process_counter = 1
 
-                # get step id and time
-                step_id = all_steps[step_counter]
-                step_time = all_times[step_counter]
-                time_steps.append(step_time)
+                # evaluate all results for each stage
+                num_steps = len(all_steps)
+                for step_counter in range(num_steps):
 
-                # write something...
-                # and process all application events to avoid GUI freezing...
-                print('Evaluate results at step {} t = {}'.format(step_id, step_time))
-                self.sendPercentage.emit(float(step_counter + 1) / float(num_steps) * 100.0)
-                sleep(0.05)
+                    # get step id and time
+                    step_id = all_steps[step_counter]
+                    step_time = all_times[step_counter]
 
-                # put the current step id in the evaluation options
-                opt.step = step_id
+                    # write something...
+                    # and process all application events to avoid GUI freezing...
+                    print('Evaluate results at step {} t = {}'.format(step_id, step_time))
+                    self.sendPercentage.emit(float(step_counter + 1) / float(num_steps) * 100.0)
+                    sleep(0.05)
 
-                # evaluate all the results at the current step
-                displacement_field = displacement.evaluate(opt)
-                reactionForce_field = reactionForce.evaluate(opt)
-                reactionMoment_field = reactionMoment.evaluate(opt)
-                rotation_field = rotation.evaluate(opt)
+                    # put the current step id in the evaluation options
+                    opt.step = step_id
 
-                if process_counter == 1:
-                    # Arranging the Diaohragm Nodes
-                    nodePositions = []
-                    for i in range(len(DiaphragmNodes)):
-                        nodePositions.append(displacement_field.mesh.getNode(DiaphragmNodes[i]).position.z)
+                    # evaluate all the results at the current step
+                    displacement_field = displacement.evaluate(opt)
+                    reactionForce_field = reactionForce.evaluate(opt)
+                    reactionMoment_field = reactionMoment.evaluate(opt)
+                    rotation_field = rotation.evaluate(opt)
 
-                    sortedDiaphragm = [x for _, x in sorted(zip(nodePositions, DiaphragmNodes))]
-                    print(sortedDiaphragm)
+                    if process_counter == 1:
+                        # Arranging the Diaohragm Nodes
+                        nodePositions = []
+                        for i in range(len(DiaphragmNodes)):
+                            nodePositions.append(displacement_field.mesh.getNode(DiaphragmNodes[i]).position.z)
 
-                    # open the files for the recorders
+                        sortedDiaphragm = [x for _, x in sorted(zip(nodePositions, DiaphragmNodes))]
+                        print(sortedDiaphragm)
 
-                    for i in range(len(sortedDiaphragm) - 1):
-                        Drift_sp_target_i.append(sortedDiaphragm[i])
-                        Drift_sp_target_j.append(sortedDiaphragm[i + 1])
+                        # open the files for the recorders
 
-                    # get all the results that we need to reproduce the recorders
-                    # you wrote manually in OpenSees.
+                        for i in range(len(sortedDiaphragm) - 1):
+                            Drift_sp_target_i.append(sortedDiaphragm[i])
+                            Drift_sp_target_j.append(sortedDiaphragm[i + 1])
 
-                    # Initializing the recorder
+                        # get all the results that we need to reproduce the recorders
+                        # you wrote manually in OpenSees.
 
-                    for i in range(0, len(Drift_sp_target_i) + 1):
-                        all_driftsX[i] = [0]
-                        all_driftsY[i] = [0]
+                        # Initializing the recorder
 
-                        all_dispX[i] = [0]
-                        all_dispY[i] = [0]
+                        for i in range(0, len(Drift_sp_target_i) + 1):
+                            all_driftsX[i] = [0]
+                            all_driftsY[i] = [0]
 
-                    process_counter += 1
+                            all_dispX[i] = [0]
+                            all_dispY[i] = [0]
 
-                # This is how you extract data from a nodal result at one or multiple nodes
-                # and compute the relative drift accessing the mesh data
-                # this is a nodal field. The row is the nodal id
+                            all_RotZ[i] = [0]
 
-                # Structural Resposes
-                for node_counter in range(len(Drift_sp_target_i)):
-                    i_node_id = Drift_sp_target_i[node_counter]
-                    j_node_id = Drift_sp_target_j[node_counter]
-                    i_row = MpcOdbResultField.node(i_node_id)
-                    j_row = MpcOdbResultField.node(j_node_id)
-                    # this gives the Ux value using both row and column
-                    # the column is a 0-based index, so for Ux it is 0 (1 for Uy and 2 for Uz)
-                    i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
-                    j_Pz = displacement_field.mesh.getNode(j_node_id).position.z
-                    dZ = abs(j_Pz - i_Pz)
+                        process_counter += 1
 
-                    # Displacement X
-                    i_Ux = displacement_field[i_row, 0]
-                    j_Ux = displacement_field[j_row, 0]
+                    # This is how you extract data from a nodal result at one or multiple nodes
+                    # and compute the relative drift accessing the mesh data
+                    # this is a nodal field. The row is the nodal id
 
-                    # Drift X
-                    driftx = (j_Ux - i_Ux) / dZ
+                    # Structural Resposes
+                    for node_counter in range(len(Drift_sp_target_i)):
+                        i_node_id = Drift_sp_target_i[node_counter]
+                        j_node_id = Drift_sp_target_j[node_counter]
+                        i_row = MpcOdbResultField.node(i_node_id)
+                        j_row = MpcOdbResultField.node(j_node_id)
+                        # this gives the Ux value using both row and column
+                        # the column is a 0-based index, so for Ux it is 0 (1 for Uy and 2 for Uz)
+                        i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
+                        j_Pz = displacement_field.mesh.getNode(j_node_id).position.z
+                        dZ = abs(j_Pz - i_Pz)
 
-                    # Displacement Y
-                    i_Uy = displacement_field[i_row, 1]
-                    j_Uy = displacement_field[j_row, 1]
+                        # Displacement X
+                        i_Ux = displacement_field[i_row, 0]
+                        j_Ux = displacement_field[j_row, 0]
 
-                    # Drift Y
-                    drifty = (j_Uy - i_Uy) / dZ
+                        # Rotation Z
+                        i_Rx = rotation_field[i_row, 2]
+                        j_Rx = rotation_field[j_row, 2]
+
+                        # Drift X
+                        driftx = (j_Ux - i_Ux) / dZ
+
+                        # Displacement Y
+                        i_Uy = displacement_field[i_row, 1]
+                        j_Uy = displacement_field[j_row, 1]
+
+                        # Drift Y
+                        drifty = (j_Uy - i_Uy) / dZ
+
+                        # Record Keeper
+                        all_driftsX[node_counter + 1].append(driftx)
+                        all_driftsY[node_counter + 1].append(drifty)
+
+                        all_dispX[node_counter].append(i_Ux)
+                        all_dispY[node_counter].append(i_Uy)
+
+                        all_RotZ[node_counter].append(i_Rx)
+
+                        if node_counter == len(Drift_sp_target_i) - 1:
+                            all_dispX[node_counter + 1].append(j_Ux)
+                            all_dispY[node_counter + 1].append(j_Uy)
+
+                            all_RotZ[node_counter + 1].append(j_Rx)
+
+                    # Base Reactions and Deformations
+                    i_Rx = 0
+                    i_Ry = 0
+                    i_Mx = 0
+                    i_My = 0
+                    i_Rox = 0
+                    i_Roy = 0
+                    i_Roz = 0
+                    i_Uz_Max = 0
+                    i_Uz_Max_Node = ""
+                    i_Uz_Min = 0
+                    i_Uz_Min_Node = ""
+                    for node_counter in range(len(BaseNodes)):
+                        i_node_id = BaseNodes[node_counter]
+                        i_row = MpcOdbResultField.node(i_node_id)
+                        # this gives the Ux value using both row and column
+                        # the column is a 0-based index, so for Ux it is 0 (1 for Uy and 2 for Uz)
+
+                        # Base Reaction Force X, Y
+                        i_Rx += reactionForce_field[i_row, 0]
+                        i_Ry += reactionForce_field[i_row, 1]
+
+                        # Reaction Moment X, Y
+                        i_Mx += reactionMoment_field[i_row, 0]
+                        i_My += reactionMoment_field[i_row, 1]
+
+                        # Rotation X, Y, Z
+                        i_Rox += rotation_field[i_row, 0]
+                        i_Roy += rotation_field[i_row, 1]
+                        i_Roz += rotation_field[i_row, 2]
+
+                        # Base Movements
+
+                        if i_Uz_Max < displacement_field[i_row, 2]:
+                            i_Uz_Max = displacement_field[i_row, 2]
+
+                            i_Px = displacement_field.mesh.getNode(i_node_id).position.x
+                            i_Py = displacement_field.mesh.getNode(i_node_id).position.y
+                            i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
+                            i_Uz_Max_Node = "X_" + str(i_Px) + " Y_" + str(i_Py) + " Z_" + str(i_Pz)
+
+                        if i_Uz_Min > displacement_field[i_row, 2]:
+                            i_Uz_Min = displacement_field[i_row, 2]
+
+                            i_Px = displacement_field.mesh.getNode(i_node_id).position.x
+                            i_Py = displacement_field.mesh.getNode(i_node_id).position.y
+                            i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
+                            i_Uz_Min_Node = "X_" + str(i_Px) + " Y_" + str(i_Py) + " Z_" + str(i_Pz)
 
                     # Record Keeper
-                    all_driftsX[node_counter + 1].append(driftx)
-                    all_driftsY[node_counter + 1].append(drifty)
+                    BaseReactionX.append(i_Rx)
+                    BaseReactionY.append(i_Ry)
+                    BaseMomentX.append(i_Mx)
+                    BaseMomentY.append(i_My)
+                    Rotation_X.append(i_Rox / len(BaseNodes))
+                    Rotation_Y.append(i_Roy / len(BaseNodes))
+                    Rotation_Z.append(i_Roz / len(BaseNodes))
 
-                    all_dispX[node_counter].append(i_Ux)
-                    all_dispY[node_counter].append(i_Uy)
+                    Uz_Max.append(i_Uz_Max)
+                    Uz_Max_Node.append(i_Uz_Max_Node)
+                    Uz_Min.append(i_Uz_Min)
+                    Uz_Min_Node.append(i_Uz_Min_Node)
 
-                    if node_counter == len(Drift_sp_target_i) - 1:
-                        all_dispX[node_counter + 1].append(j_Ux)
-                        all_dispY[node_counter + 1].append(j_Uy)
 
-                # Base Reactions and Deformations
-                i_Rx = 0
-                i_Ry = 0
-                i_Mx = 0
-                i_My = 0
-                i_Rox = 0
-                i_Roy = 0
-                i_Roz = 0
-                i_Uz_Max = 0
-                i_Uz_Max_Node = ""
-                i_Uz_Min = 0
-                i_Uz_Min_Node = ""
-                for node_counter in range(len(BaseNodes)):
-                    i_node_id = BaseNodes[node_counter]
-                    i_row = MpcOdbResultField.node(i_node_id)
-                    # this gives the Ux value using both row and column
-                    # the column is a 0-based index, so for Ux it is 0 (1 for Uy and 2 for Uz)
-
-                    # Base Reaction Force X, Y
-                    i_Rx += reactionForce_field[i_row, 0]
-                    i_Ry += reactionForce_field[i_row, 1]
-
-                    # Reaction Moment X, Y
-                    i_Mx += reactionMoment_field[i_row, 0]
-                    i_My += reactionMoment_field[i_row, 1]
-
-                    # Rotation X, Y, Z
-                    i_Rox += rotation_field[i_row, 0]
-                    i_Roy += rotation_field[i_row, 1]
-                    i_Roz += rotation_field[i_row, 2]
-
-                    # Base Movements
-
-                    if i_Uz_Max < displacement_field[i_row, 2]:
-                        i_Uz_Max = displacement_field[i_row, 2]
-
-                        i_Px = displacement_field.mesh.getNode(i_node_id).position.x
-                        i_Py = displacement_field.mesh.getNode(i_node_id).position.y
-                        i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
-                        i_Uz_Max_Node = "X_" + str(i_Px) + " Y_" + str(i_Py) + " Z_" + str(i_Pz)
-
-                    if i_Uz_Min > displacement_field[i_row, 2]:
-                        i_Uz_Min = displacement_field[i_row, 2]
-
-                        i_Px = displacement_field.mesh.getNode(i_node_id).position.x
-                        i_Py = displacement_field.mesh.getNode(i_node_id).position.y
-                        i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
-                        i_Uz_Min_Node = "X_" + str(i_Px) + " Y_" + str(i_Py) + " Z_" + str(i_Pz)
-
-                # Record Keeper
-                BaseReactionX.append(i_Rx)
-                BaseReactionY.append(i_Ry)
-                BaseMomentX.append(i_Mx)
-                BaseMomentY.append(i_My)
-                RotationX.append(i_Rox / len(BaseNodes))
-                RotationY.append(i_Roy / len(BaseNodes))
-                RotationZ.append(i_Roz / len(BaseNodes))
-
-                Uz_Max.append(i_Uz_Max)
-                Uz_Max_Node.append(i_Uz_Max_Node)
-                Uz_Min.append(i_Uz_Min)
-                Uz_Min_Node.append(i_Uz_Min_Node)
-
+            Extractor()
             def AbsouluteList(Data):
                 value = [abs(ele) for ele in Data]
                 return value
@@ -564,44 +579,43 @@ class Worker(QObject):
             # Data Processing Section
             # Removing the extra residue created during initializing the recorders
             for i in range(0, len(Drift_sp_target_i) + 1):
-                if len(all_driftsX[i]) != 1:
-                    all_driftsX[i].pop(0)
-                if len(all_driftsY[i]) != 1:
-                    all_driftsY[i].pop(0)
-                if len(all_dispX[i]) != 1:
-                    all_dispX[i].pop(0)
-                if len(all_dispY[i]) != 1:
-                    all_dispY[i].pop(0)
+                def FirstPopper(List):
+                    if len(List[i]) != 1:
+                        List[i].pop(0)
 
-            # Drifts
-            DriftX = []
-            for key, value in all_driftsX.items():
-                DriftX.append(max(AbsouluteList(value)))
+                FirstPopper(all_driftsX)
+                FirstPopper(all_driftsY)
+                FirstPopper(all_dispX)
+                FirstPopper(all_dispY)
+                FirstPopper(all_RotZ)
 
-            DriftY = []
-            for key, value in all_driftsY.items():
-                DriftY.append(max(AbsouluteList(value)))
+            # Maximum of the all time steps for each key, Provide set with key as diaphragm node and Value as list of TS value
+            def MaxTimeStep(DefinedSet, Displacement = False):
 
-            # Displacements
-            DisplacementX = []
+                MaxValue = []
+                if Displacement == False:
+                    for key, value in DefinedSet.items():
+                        MaxValue.append(max(AbsouluteList(value)))
+                    return MaxValue
+
+                if Displacement == True:
+                    RefDispX = DefinedSet[0]
+                    for key, value in DefinedSet.items():
+                        RelDispX = value
+                        if SSI_Analysis:
+                            RelDispX = [a - b for a, b in zip(value, RefDispX)]
+
+                        MaxValue.append(max(AbsouluteList(RelDispX)))
+                    return MaxValue
+
+            # Drifts and Displacement Processing
+            DriftX =  MaxTimeStep(all_driftsX)
+            DriftY = MaxTimeStep(all_driftsY)
+            DisplacementX = MaxTimeStep(all_dispX, Displacement = True)
+            DisplacementY = MaxTimeStep(all_dispY, Displacement = True)
+            RotationZ = MaxTimeStep(all_RotZ)
+
             all_dispXTOP = all_dispX[list(all_dispX.keys())[-1]]
-
-            RefDispX = all_dispX[0]
-            for key, value in all_dispX.items():
-                RelDispX = value
-                if SSI_Analysis:
-                    RelDispX = [a - b for a, b in zip(value, RefDispX)]
-
-                DisplacementX.append(max(AbsouluteList(RelDispX)))
-
-            DisplacementY = []
-            RefDispY = all_dispY[0]
-            for key, value in all_dispY.items():
-                RelDispY = value
-                if SSI_Analysis:
-                    RelDispY = [a - b for a, b in zip(value, RefDispY)]
-
-                DisplacementY.append(max(AbsouluteList(RelDispY)))
 
             # Uplifts and Settlements
             Max_Uplift = max(Uz_Max)
@@ -668,13 +682,14 @@ class Worker(QObject):
                     Average = ValueExt(DataList, Indexes)
                     return Average
 
-                Titles = ["Drift X", "Drift Y", "Displacement X", "Displacement Y", "Reaction Force X", "Reaction Force Y",
+                Titles = ["Drift X", "Drift Y", "Displacement X", "Displacement Y","Rotation Z", "Reaction Force X", "Reaction Force Y",
                           "Reaction Moment X", "Reaction Moment Y", "Rocking Angle X", "Rocking Angle Y", "Rocking Angle Z",
                           "Max Uplift", "Max Uplift Point", "Max Settlement", "Max Settlement Point"
                           ]
+
                 for index, value in enumerate(DriftX):
 
-                    Items = [str(DriftX[index]), str(DriftY[index]), str(DisplacementX[index]), str(DisplacementY[index])]
+                    Items = [str(DriftX[index]), str(DriftY[index]), str(DisplacementX[index]), str(DisplacementY[index]), str(RotationZ[index])]
 
                     if index == 0:
                         ResultObj.write('\t'.join(Titles))
@@ -684,9 +699,9 @@ class Worker(QObject):
                         Items.append(str(max(AbsouluteList(BaseReactionY))))
                         Items.append(str(max(AbsouluteList(BaseMomentX))))
                         Items.append(str(max(AbsouluteList(BaseMomentY))))
-                        Items.append(str(max(AbsouluteList(RotationX))))
-                        Items.append(str(max(AbsouluteList(RotationY))))
-                        Items.append(str(max(AbsouluteList(RotationZ))))
+                        Items.append(str(max(AbsouluteList(Rotation_X))))
+                        Items.append(str(max(AbsouluteList(Rotation_Y))))
+                        Items.append(str(max(AbsouluteList(Rotation_Z))))
                         Items.append(str(Max_Uplift))
                         Items.append(str(Max_Uplift_Point))
                         Items.append(str(Max_Settlement))
