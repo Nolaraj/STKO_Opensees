@@ -186,6 +186,15 @@ class Worker(QObject):
                         union_list = list(set(List1) | set(List2))
                         return union_list
 
+                    def DictSort(Dict):
+                        sorted_list = sorted(Dict.items())
+
+                        sorted_dict = {}
+                        for key, value in sorted_list:
+                            sorted_dict[key] = value
+
+                        return sorted_dict
+
                     # All Element Nodes
                     ElementNodesNo = [2, 8]
                     for eleNodes in ElementNodesNo:
@@ -296,6 +305,12 @@ class Worker(QObject):
                         for key, value in FloorNodes.items():
                             Value = RemoveListDuplicates(value)
                             FloorNodes[key] = Value
+
+                        #Sorting for the dict based on the key values
+                        NodesDict = DictSort(FloorNodes)
+                        for key, value in NodesDict.items():
+                            FloorNodes[key] = value
+
 
                     DiaphragmNodes = DiaphragmNodesExt()
 
