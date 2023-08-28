@@ -99,18 +99,19 @@ class Worker(QObject):
             all_driftsY = {}
             all_dispX = {}
             all_dispY = {}
-            all_RotZ = {}
-            BaseReactionX = []
-            BaseReactionY = []
-            BaseMomentX = []
-            BaseMomentY = []
-            Rotation_X = []
-            Rotation_Y = []
-            Rotation_Z = []
+            BaseReactionX = {}
+            BaseReactionY = {}
+            BaseMomentX = {}
+            BaseMomentY = {}
+            Rotation_X = {}
+            Rotation_Y = {}
+            Rotation_Z = {}
+            TorsionalIrregularityRatio = {}
             Uz_Max = []
             Uz_Max_Node = []
             Uz_Min = []
             Uz_Min_Node = []
+
 
             def Extractor():
                 # # get document
@@ -148,12 +149,15 @@ class Worker(QObject):
                     raise Exception("No steps in this stage")
 
                 def IDs_Finder(mesh):
-                    tolerance = 1.0e-8
+                    tolerance = 1.0e-4
 
                     All_Nodes_Super = []
                     Element_Nodes_Super = []
                     Element_Nodes_All = {}
                     FloorNodes = {}
+                    XGrids = {}
+                    YGrids = {}
+
 
                     # Diaphragm Nodes
                     def Node_Z_GT_0(node, node_id, Operation="Plus"):
@@ -194,6 +198,16 @@ class Worker(QObject):
                             sorted_dict[key] = value
 
                         return sorted_dict
+
+                    def ValueFiltering(List, Tolerance):
+                        #If the values in the list are in the tolerance range then they are eliminated and only unique values are written
+                        filtered_values = []
+                        for value in List:
+                            is_unique = all(
+                                abs(value - existing_value) > Tolerance for existing_value in filtered_values)
+                            if is_unique:
+                                filtered_values.append(value)
+                        return filtered_values
 
                     # All Element Nodes
                     ElementNodesNo = [2, 8]
@@ -311,10 +325,66 @@ class Worker(QObject):
                         for key, value in NodesDict.items():
                             FloorNodes[key] = value
 
+                    def GridNodes():
+                        # X and Y CoOrdinates
+
+                        for floor, nodes in FloorNodes.items():
+                            X_CoOrds = []
+                            Y_CoOrds = []
+                            for node in nodes:
+                                xvalue = mesh.getNode(node).position.x
+                                yvalue = mesh.getNode(node).position.y
+                                X_CoOrds.append(xvalue)
+                                Y_CoOrds.append(yvalue)
+                            X_CoOrds = RemoveListDuplicates(X_CoOrds)
+                            Y_CoOrds = RemoveListDuplicates(Y_CoOrds)
+                            X_CoOrds.sort()
+                            Y_CoOrds.sort()
+                            X_CoOrds = ValueFiltering(X_CoOrds, tolerance)
+                            Y_CoOrds = ValueFiltering(Y_CoOrds, tolerance)
+
+
+
+
+                            #Inner Set Assigning
+                            dynXGrid = {}
+                            dynYGrid = {}
+
+                            for X_CoOrd in X_CoOrds:
+                                dynXGrid[X_CoOrd] = []
+                                for node in nodes:
+                                    xvalue = mesh.getNode(node).position.x
+
+                                    if CheckTolerance(X_CoOrd, tolerance, xvalue):
+                                        dynXGrid[X_CoOrd].append(node)
+
+
+                            for Y_CoOrd in Y_CoOrds:
+                                dynYGrid[Y_CoOrd] = []
+                                for node in nodes:
+                                    yvalue = mesh.getNode(node).position.y
+                                    if CheckTolerance(Y_CoOrd, tolerance, yvalue):
+                                        dynYGrid[Y_CoOrd].append(node)
+
+                            #Main set assignment
+                            XGrids[floor] = dynXGrid
+                            YGrids[floor] = dynYGrid
+
+                        for floor, Grids in XGrids.items():
+                            for grid, nodes in Grids.items():
+                                print(f"Floor {floor}, Grid {grid}, nodes, {nodes}")
+
+
+
+
+
 
                     DiaphragmNodes = DiaphragmNodesExt()
 
                     FloorNodesExt()
+                    GridNodes()
+                    print(XGrids)
+                    print(YGrids)
 
                     # Adding and cleaning to get the all super nodes
                     for value in DiaphragmNodes:
@@ -328,17 +398,20 @@ class Worker(QObject):
                         All_Nodes_Super.append(val)
 
                     All_Nodes_Super = RemoveListDuplicates(All_Nodes_Super)
-                    print(len(All_Nodes_Super))
 
-                    print(DiaphragmNodes, FloorNodes)
+                    #
+                    # print(XGrids)
+                    # print(YGrids)
 
-                    return DiaphragmNodes, FloorNodes
+
+
+                    return DiaphragmNodes, FloorNodes, XGrids, YGrids
 
                 process_counter = 1
 
                 # evaluate all results for each stage
                 num_steps = len(all_steps)
-                num_steps = 20
+                # num_steps = 20
                 for index, step_counter in enumerate(range(num_steps)):
 
                     # get step id and time
@@ -364,7 +437,7 @@ class Worker(QObject):
 
                     if index == 0:
                         mesh = displacement_field.mesh
-                        sortedDiaphragm, FloorNodes = IDs_Finder(mesh)
+                        sortedDiaphragm, FloorNodes, XGrids, YGrids = IDs_Finder(mesh)
                         BaseNodes = FloorNodes[0]
 
 
@@ -380,13 +453,25 @@ class Worker(QObject):
                         # Initializing the recorder
 
                         for i in range(0, len(Drift_sp_target_i) + 1):
-                            all_driftsX[i] = [0]
-                            all_driftsY[i] = [0]
+                            all_driftsX[i] = []
+                            all_driftsY[i] = []
 
-                            all_dispX[i] = [0]
-                            all_dispY[i] = [0]
+                            all_dispX[i] = []
+                            all_dispY[i] = []
 
-                            all_RotZ[i] = [0]
+
+                            Rotation_Z[i] = []
+
+                        for floor in FloorNodes.keys():
+                            BaseReactionX[floor] = []
+                            BaseReactionY[floor] = []
+                            BaseMomentX[floor] = []
+                            BaseMomentY[floor] = []
+
+                            Rotation_X[floor] = []
+                            Rotation_Y[floor] = []
+
+                            TorsionalIrregularityRatio[floor] = []
 
                         process_counter += 1
 
@@ -394,7 +479,7 @@ class Worker(QObject):
                     # and compute the relative drift accessing the mesh data
                     # this is a nodal field. The row is the nodal id
 
-                    # Structural Resposes
+                    # Structural Responses
                     for node_counter in range(len(Drift_sp_target_i)):
                         i_node_id = Drift_sp_target_i[node_counter]
                         j_node_id = Drift_sp_target_j[node_counter]
@@ -410,9 +495,17 @@ class Worker(QObject):
                         i_Ux = displacement_field[i_row, 0]
                         j_Ux = displacement_field[j_row, 0]
 
+                        # Rotation X
+                        # i_Rx = rotation_field[i_row, 0]
+                        # j_Rx = rotation_field[j_row, 0]
+
+                        # Rotation Y
+                        # i_Ry = rotation_field[i_row, 1]
+                        # j_Ry = rotation_field[j_row, 1]
+
                         # Rotation Z
-                        i_Rx = rotation_field[i_row, 2]
-                        j_Rx = rotation_field[j_row, 2]
+                        i_Rz = rotation_field[i_row, 2]
+                        j_Rz = rotation_field[j_row, 2]
 
                         # Drift X
                         driftx = (j_Ux - i_Ux) / dZ
@@ -431,173 +524,288 @@ class Worker(QObject):
                         all_dispX[node_counter].append(i_Ux)
                         all_dispY[node_counter].append(i_Uy)
 
-                        all_RotZ[node_counter].append(i_Rx)
+
+                        # Rotation_X[node_counter].append(i_Rx)
+                        # Rotation_Y[node_counter].append(i_Ry)
+                        Rotation_Z[node_counter].append(i_Rz)
+
 
                         if node_counter == len(Drift_sp_target_i) - 1:
                             all_dispX[node_counter + 1].append(j_Ux)
                             all_dispY[node_counter + 1].append(j_Uy)
 
-                            all_RotZ[node_counter + 1].append(j_Rx)
 
-                    # Base Reactions and Deformations
-                    i_Rx = 0
-                    i_Ry = 0
-                    i_Mx = 0
-                    i_My = 0
-                    i_Rox = 0
-                    i_Roy = 0
-                    i_Roz = 0
-                    i_Uz_Max = 0
-                    i_Uz_Max_Node = ""
-                    i_Uz_Min = 0
-                    i_Uz_Min_Node = ""
-                    for node_counter in range(len(BaseNodes)):
-                        i_node_id = BaseNodes[node_counter]
-                        i_row = MpcOdbResultField.node(i_node_id)
-                        # this gives the Ux value using both row and column
-                        # the column is a 0-based index, so for Ux it is 0 (1 for Uy and 2 for Uz)
+                            # Rotation_X[node_counter + 1].append(j_Rx)
+                            # Rotation_Y[node_counter + 1].append(j_Ry)
+                            Rotation_Z[node_counter + 1].append(j_Rz)
 
-                        # Base Reaction Force X, Y
-                        i_Rx += reactionForce_field[i_row, 0]
-                        i_Ry += reactionForce_field[i_row, 1]
+                    # FLoor wise reactions and  Deformations
+                    Floors = list(FloorNodes.keys())
+                    for floor, Nodes in FloorNodes.items():
+                        i_Rx = 0
+                        i_Ry = 0
+                        i_Mx = 0
+                        i_My = 0
+                        i_Rox = 0
+                        i_Roy = 0
+                        i_Roz = 0
+                        i_Uz_Max = 0
+                        i_Uz_Max_Node = ""
+                        i_Uz_Min = 0
+                        i_Uz_Min_Node = ""
 
-                        # Reaction Moment X, Y
-                        i_Mx += reactionMoment_field[i_row, 0]
-                        i_My += reactionMoment_field[i_row, 1]
+                        index = Floors.index(floor)
 
-                        # Rotation X, Y, Z
-                        i_Rox += rotation_field[i_row, 0]
-                        i_Roy += rotation_field[i_row, 1]
-                        i_Roz += rotation_field[i_row, 2]
+                        #Node Based Results
 
-                        # Base Movements
+                        for node in Nodes:
+                            # i_node_id = BaseNodes[node_counter]
+                            i_row = MpcOdbResultField.node(node)
+                            # this gives the Ux value using both row and column
+                            # the column is a 0-based index, so for Ux it is 0 (1 for Uy and 2 for Uz)
 
-                        if i_Uz_Max < displacement_field[i_row, 2]:
-                            i_Uz_Max = displacement_field[i_row, 2]
+                            # Base Reaction Force X, Y
+                            i_Rx += reactionForce_field[i_row, 0]
+                            i_Ry += reactionForce_field[i_row, 1]
 
-                            i_Px = displacement_field.mesh.getNode(i_node_id).position.x
-                            i_Py = displacement_field.mesh.getNode(i_node_id).position.y
-                            i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
-                            i_Uz_Max_Node = "X_" + str(i_Px) + " Y_" + str(i_Py) + " Z_" + str(i_Pz)
+                            # Reaction Moment X, Y
+                            i_Mx += reactionMoment_field[i_row, 0]
+                            i_My += reactionMoment_field[i_row, 1]
 
-                        if i_Uz_Min > displacement_field[i_row, 2]:
-                            i_Uz_Min = displacement_field[i_row, 2]
+                            # Rotation X, Y, Z
+                            i_Rox += rotation_field[i_row, 0]
+                            i_Roy += rotation_field[i_row, 1]
+                            i_Roz += rotation_field[i_row, 2]
 
-                            i_Px = displacement_field.mesh.getNode(i_node_id).position.x
-                            i_Py = displacement_field.mesh.getNode(i_node_id).position.y
-                            i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
-                            i_Uz_Min_Node = "X_" + str(i_Px) + " Y_" + str(i_Py) + " Z_" + str(i_Pz)
+                            # Base Movements
+                            if index == 0:
+                                if i_Uz_Max < displacement_field[i_row, 2]:
+                                    i_Uz_Max = displacement_field[i_row, 2]
 
-                    # Record Keeper
-                    BaseReactionX.append(i_Rx)
-                    BaseReactionY.append(i_Ry)
-                    BaseMomentX.append(i_Mx)
-                    BaseMomentY.append(i_My)
-                    Rotation_X.append(i_Rox / len(BaseNodes))
-                    Rotation_Y.append(i_Roy / len(BaseNodes))
-                    Rotation_Z.append(i_Roz / len(BaseNodes))
+                                    i_Px = displacement_field.mesh.getNode(node).position.x
+                                    i_Py = displacement_field.mesh.getNode(node).position.y
+                                    i_Pz = displacement_field.mesh.getNode(node).position.z
+                                    i_Uz_Max_Node = "X_" + str(i_Px) + " Y_" + str(i_Py) + " Z_" + str(i_Pz)
 
-                    Uz_Max.append(i_Uz_Max)
-                    Uz_Max_Node.append(i_Uz_Max_Node)
-                    Uz_Min.append(i_Uz_Min)
-                    Uz_Min_Node.append(i_Uz_Min_Node)
+                                if i_Uz_Min > displacement_field[i_row, 2]:
+                                    i_Uz_Min = displacement_field[i_row, 2]
+
+                                    i_Px = displacement_field.mesh.getNode(node).position.x
+                                    i_Py = displacement_field.mesh.getNode(node).position.y
+                                    i_Pz = displacement_field.mesh.getNode(node).position.z
+                                    i_Uz_Min_Node = "X_" + str(i_Px) + " Y_" + str(i_Py) + " Z_" + str(i_Pz)
+
+                        #Torsional Irregularity Specific Results
+                        # TORsional irregularity based on Displacement X
+                        NodeDispX = []
+                        XGridObj = XGrids[floor]
+
+                        Grids = list(XGridObj.keys())
+                        FirstGrid, LastGrid = Grids[0], Grids[-1]
+
+                        NodeA = XGrids[floor][FirstGrid][0]
+                        NodeB = XGrids[floor][FirstGrid][-1]
+                        NodeC = XGrids[floor][LastGrid][0]
+
+                        listLens = []
+                        for grid, nodes in XGridObj.items():
+                            listLens.append(len(nodes))
+
+                        maxLen = max(listLens)
+                        len_Index = 0
+                        for index1, len1 in enumerate(listLens):
+                            # print(index1, len1)
+                            if maxLen == len1:
+                                len_Index = index1
+
+                        keyValue = Grids[len_Index]
+                        NodeD = XGrids[floor][keyValue][-1]
+                        NodeC1 = XGrids[floor][keyValue][0]
+                        NodesExtreme = [NodeA, NodeB, NodeC, NodeD, NodeC1]
+                        for node in NodesExtreme:
+                            i_row = MpcOdbResultField.node(node)
+
+                            i_Ux += displacement_field[i_row, 0]
+                            NodeDispX.append(abs(i_Ux))
+
+
+                        #Checks if all the values in the list are greater than a certain threshhold to extract for Torsional irregularity
+                        Ratio1 = 1.0000
+                        Ratio2 = 1.0000
+                        Ratio = 1.0000
+                        all_greater = all(item > 0.001 for item in NodeDispX)
+                        if all_greater:
+                            Ratio1 = max(NodeDispX[0], NodeDispX[1]) / min(NodeDispX[0], NodeDispX[1])
+                            Ratio2 = max(NodeDispX[2], NodeDispX[3]) / min(NodeDispX[2], NodeDispX[3])
+                            Ratio3 = max(NodeDispX[3], NodeDispX[4]) / min(NodeDispX[3], NodeDispX[4])
+
+                            Ratio = max(Ratio1, Ratio2, Ratio3)
+                            Ratio = Ratio1
+
+                        print(NodeDispX)
+                        print(NodesExtreme)
+
+
+
+
+
+
+
+
+                        # Record Keeper
+                        BaseReactionX[floor].append(i_Rx)
+                        BaseReactionY[floor].append(i_Ry)
+                        BaseMomentX[floor].append(i_Mx)
+                        BaseMomentY[floor].append(i_My)
+
+                        Rotation_X[floor].append(i_Rox/len(Nodes))
+                        Rotation_Y[floor].append(i_Roy/len(Nodes))
+
+                        TorsionalIrregularityRatio[floor].append(Ratio)
+
+
+                        if index == 0:
+                            Uz_Max.append(i_Uz_Max)
+                            Uz_Max_Node.append(i_Uz_Max_Node)
+                            Uz_Min.append(i_Uz_Min)
+                            Uz_Min_Node.append(i_Uz_Min_Node)
 
 
             Extractor()
 
-            def AbsouluteList(Data):
-                value = [abs(ele) for ele in Data]
-                return value
 
-            # Data Processing Section
-            # Removing the extra residue created during initializing the recorders
-            for i in range(0, len(Drift_sp_target_i) + 1):
-                def FirstPopper(List):
-                    if len(List[i]) != 1:
-                        List[i].pop(0)
+            DriftX =[]
+            DriftY = []
+            DisplacementX = []
+            DisplacementY = []
+            RotationZ = []
+            ReactionX = []
+            ReactionY = []
+            MomentX = []
+            MomentY = []
+            RotationX = []
+            RotationY = []
+            RotationZ = []
+            TorsionalIR = []
 
-                FirstPopper(all_driftsX)
-                FirstPopper(all_driftsY)
-                FirstPopper(all_dispX)
-                FirstPopper(all_dispY)
-                FirstPopper(all_RotZ)
+            def Processor():
 
-            # Maximum of the all time steps for each key, Provide set with key as diaphragm node and Value as list of TS value
-            def MaxTimeStep(DefinedSet, Displacement = False):
+                def AbsouluteList(Data):
+                    if len(Data) == 0:
+                        return[0]
 
-                MaxValue = []
-                if Displacement == False:
-                    for key, value in DefinedSet.items():
-                        MaxValue.append(max(AbsouluteList(value)))
-                    return MaxValue
+                    value = [abs(ele) for ele in Data]
+                    return value
 
-                if Displacement == True:
-                    RefDispX = DefinedSet[0]
-                    for key, value in DefinedSet.items():
-                        RelDispX = value
-                        if SSI_Analysis:
-                            RelDispX = [a - b for a, b in zip(value, RefDispX)]
+                # Data Processing Section
+                # # Removing the extra residue created during initializing the recorders
+                # for i in range(0, len(Drift_sp_target_i) + 1):
+                #     def FirstPopper(List):
+                #         if len(List[i]) != 1:
+                #             List[i].pop(0)
+                #
+                #     FirstPopper(all_driftsX)
+                #     FirstPopper(all_driftsY)
+                #     FirstPopper(all_dispX)
+                #     FirstPopper(all_dispY)
+                #     FirstPopper(all_RotZ)
 
-                        MaxValue.append(max(AbsouluteList(RelDispX)))
-                    return MaxValue
-
-            # Drifts
-            DriftX =  MaxTimeStep(all_driftsX)
-            DriftY = MaxTimeStep(all_driftsY)
-            DisplacementX = MaxTimeStep(all_dispX, Displacement = True)
-            DisplacementY = MaxTimeStep(all_dispY, Displacement = True)
-            RotationZ = MaxTimeStep(all_RotZ)
-
-
-
-            # DriftX = []
-            # for key, value in all_driftsX.items():
-            #     DriftX.append(max(AbsouluteList(value)))
-            #
-            # DriftY = []
-            # for key, value in all_driftsY.items():
-            #     DriftY.append(max(AbsouluteList(value)))
-            #
-            # # Displacements
-            # DisplacementX = []
-            # RefDispX = all_dispX[0]
-            # for key, value in all_dispX.items():
-            #     RelDispX = value
-            #     if SSI_Analysis:
-            #         RelDispX = [a - b for a, b in zip(value, RefDispX)]
-            #
-            #     DisplacementX.append(max(AbsouluteList(RelDispX)))
-            #
-            # DisplacementY = []
-            # RefDispY = all_dispY[0]
-            # for key, value in all_dispY.items():
-            #     RelDispY = value
-            #     if SSI_Analysis:
-            #         RelDispY = [a - b for a, b in zip(value, RefDispY)]
-            #
-            #     DisplacementY.append(max(AbsouluteList(RelDispY)))
-
-            # Uplifts and Settlements
-            Max_Uplift = max(Uz_Max)
-            Max_Uplift_index = Uz_Max.index(Max_Uplift)
-            Max_Uplift_Point = Uz_Max_Node[Max_Uplift_index]
+                # Maximum of the all time steps for each key, Provide set with key as diaphragm node and Value as list of TS value
+                def MaxTimeStep(OutList, DefinedSet, Displacement = False):
+                    MaxValue = []
+                    if Displacement == False:
+                        for key, value in DefinedSet.items():
+                            MaxValue.append(max(AbsouluteList(value)))
+                        # return MaxValue
 
 
-            Max_Settlement = min(Uz_Min)
-            Max_Settlement_index = Uz_Min.index(Max_Settlement)
-            Max_Settlement_Point = Uz_Min_Node[Max_Settlement_index]
+                    if Displacement == True:
+                        RefDispX = DefinedSet[0]
+                        for key, value in DefinedSet.items():
+                            RelDispX = value
+                            if SSI_Analysis:
+                                RelDispX = [a - b for a, b in zip(value, RefDispX)]
 
-            # Base Shear and Its Pseudo time
-            try:
-                index = BaseReactionX.index(max(AbsouluteList(BaseReactionX)))
-            except:
-                index = BaseReactionX.index(-max(AbsouluteList(BaseReactionX)))
-            print("Hello Here")
+                            MaxValue.append(max(AbsouluteList(RelDispX)))
+                        # return MaxValue
+
+                    if len(MaxValue) == 0:
+                        OutList.append(0.00)
+                    else:
+                        for value in MaxValue:
+                            OutList.append(value)
 
 
-            MaxBS_PseudoTime = all_times[index]
+                # All data max value provider
+                MaxTimeStep(DriftX, all_driftsX)
+                MaxTimeStep(DriftY, all_driftsY)
+                MaxTimeStep(DisplacementX, all_dispX, Displacement = True)
+                MaxTimeStep(DisplacementY, all_dispY, Displacement = True)
+                # MaxTimeStep(RotationZ, all_RotZ)
+                MaxTimeStep(ReactionX, BaseReactionX)
+                MaxTimeStep(ReactionY, BaseReactionY)
+                MaxTimeStep(MomentX, BaseMomentX)
+                MaxTimeStep(MomentY, BaseMomentY)
+                MaxTimeStep(RotationX, Rotation_X)
+                MaxTimeStep(RotationY, Rotation_Y)
+                MaxTimeStep(RotationZ, Rotation_Z)
+                MaxTimeStep(TorsionalIR, TorsionalIrregularityRatio)
 
-            print("Max, Settlement Point", "Max Uplift", Max_Uplift, Max_Settlement)
+
+                # DriftX = []
+                # for key, value in all_driftsX.items():
+                #     DriftX.append(max(AbsouluteList(value)))
+                #
+                # DriftY = []
+                # for key, value in all_driftsY.items():
+                #     DriftY.append(max(AbsouluteList(value)))
+                #
+                # # Displacements
+                # DisplacementX = []
+                # RefDispX = all_dispX[0]
+                # for key, value in all_dispX.items():
+                #     RelDispX = value
+                #     if SSI_Analysis:
+                #         RelDispX = [a - b for a, b in zip(value, RefDispX)]
+                #
+                #     DisplacementX.append(max(AbsouluteList(RelDispX)))
+                #
+                # DisplacementY = []
+                # RefDispY = all_dispY[0]
+                # for key, value in all_dispY.items():
+                #     RelDispY = value
+                #     if SSI_Analysis:
+                #         RelDispY = [a - b for a, b in zip(value, RefDispY)]
+                #
+                #     DisplacementY.append(max(AbsouluteList(RelDispY)))
+
+                # Uplifts and Settlements
+                Max_Uplift = max(Uz_Max)
+                Max_Uplift_index = Uz_Max.index(Max_Uplift)
+                Max_Uplift_Point = Uz_Max_Node[Max_Uplift_index]
+
+
+
+                Max_Settlement = min(Uz_Min)
+                Max_Settlement_index = Uz_Min.index(Max_Settlement)
+                Max_Settlement_Point = Uz_Min_Node[Max_Settlement_index]
+
+
+                # Base Shear and Its Pseudo time
+                Floors = list(BaseReactionX.keys())
+
+                try:
+                    index = BaseReactionX[Floors[0]].index(max(AbsouluteList(BaseReactionX[Floors[0]])))
+                except:
+                    index = BaseReactionX[Floors[0]].index(-max(AbsouluteList(BaseReactionX[Floors[0]])))
+
+                MaxBS_PseudoTime = all_times[index]
+
+
+
+                return Max_Uplift,Max_Uplift_Point,Max_Settlement ,Max_Settlement_Point,MaxBS_PseudoTime
+
+            Max_Uplift,Max_Uplift_Point,Max_Settlement ,Max_Settlement_Point,MaxBS_PseudoTime = Processor()
 
 
             #Writing starts from here
@@ -643,49 +851,59 @@ class Worker(QObject):
                 #     Average = ValueExt(DataList, Indexes)
                 #     return Average
 
-                Titles = ["Drift X", "Drift Y", "Displacement X", "Displacement Y","Rotation Z", "Reaction Force X", "Reaction Force Y",
-                          "Reaction Moment X", "Reaction Moment Y", "Rocking Angle X", "Rocking Angle Y", "Rocking Angle Z",
-                          "Max Uplift", "Max Uplift Point", "Max Settlement", "Max Settlement Point"
+                Titles = ["Drift X",
+                          "Drift Y",
+                          "Displacement X",
+                          "Displacement Y",
+                          "Reaction Force X",
+                          "Reaction Force Y",
+                          "Reaction Moment X",
+                          "Reaction Moment Y",
+                          "Rotation X",
+                          "Rotation Y",
+                          "Rotation Z",
+                          "Torsional Irregularity Ratio",
+                          "Max Uplift",
+                          "Max Uplift Point",
+                          "Max Settlement",
+                          "Max Settlement Point",
+                          "Max Pseudo Time"
                           ]
                 for index, value in enumerate(DriftX):
-                    print(DriftX)
-                    print(DriftY)
-                    print(DisplacementX)
-                    print(DisplacementY)
 
-
-
-
-                    print(RotationZ)
-                    print(BaseReactionX)
-                    print(Rotation_X)
-                    print(Rotation_Y)
-                    print(Rotation_Z)
-                    print(MaxBS_PseudoTime)
-                    print(ResultObj)
-
-
-                    Items = [str(DriftX[index]), str(DriftY[index]), str(DisplacementX[index]), str(DisplacementY[index]), str(RotationZ[index])]
+                    Items = [str(DriftX[index]),
+                             str(DriftY[index]),
+                             str(DisplacementX[index]),
+                             str(DisplacementY[index]),
+                             str(ReactionX[index]),
+                             str(ReactionY[index]),
+                             str(MomentX[index]),
+                             str(MomentY[index]),
+                             str(RotationX[index]),
+                             str(RotationY[index]),
+                             str(RotationZ[index]),
+                             str(TorsionalIR[index])
+                             ]
 
                     if index == 0:
                         ResultObj.write('\t'.join(Titles))
                         ResultObj.write('\n')
 
                         # Items.append(str(AvgValue(all_dispXTOP, float(Displacement), BaseReactionX)))
-                        Items.append(str(max(AbsouluteList(BaseReactionX))))
-                        Items.append(str(max(AbsouluteList(BaseReactionY))))
-                        Items.append(str(max(AbsouluteList(BaseMomentX))))
-                        Items.append(str(max(AbsouluteList(BaseMomentY))))
-                        Items.append(str(max(AbsouluteList(Rotation_X))))
-                        Items.append(str(max(AbsouluteList(Rotation_Y))))
-                        Items.append(str(max(AbsouluteList(Rotation_Z))))
+                        # Items.append(str(max(AbsouluteList(BaseReactionX))))
+                        # Items.append(str(max(AbsouluteList(BaseReactionY))))
+                        # Items.append(str(max(AbsouluteList(BaseMomentX))))
+                        # Items.append(str(max(AbsouluteList(BaseMomentY))))
+                        # Items.append(str(max(AbsouluteList(Rotation_X))))
+                        # Items.append(str(max(AbsouluteList(Rotation_Y))))
+                        # Items.append(str(max(AbsouluteList(Rotation_Z))))
                         Items.append(str(Max_Uplift))
                         Items.append(str(Max_Uplift_Point))
                         Items.append(str(Max_Settlement))
                         Items.append(str(Max_Settlement_Point))
-
-                    if index == 1:
                         Items.append(str(MaxBS_PseudoTime))
+
+
                     print("All items cretaeed")
 
                     ResultObj.write('\t'.join(Items))
