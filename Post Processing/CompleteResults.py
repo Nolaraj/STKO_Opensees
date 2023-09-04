@@ -86,6 +86,9 @@ class Worker(QObject):
         BaseCondition = ModelInfo[4]
 
         SSI_Analysis = ModelPara()
+        #Diaphragm Drift = False computes the drift for each of the column and returns its maximum
+        DiaphragmDrift = False
+
 
 
         # Function for Extraction of results, results processing and writing to teh file provided
@@ -157,6 +160,7 @@ class Worker(QObject):
                     FloorNodes = {}
                     XGrids = {}
                     YGrids = {}
+                    ColumnFloorwise = {}
 
 
                     # Diaphragm Nodes
@@ -374,6 +378,53 @@ class Worker(QObject):
                             for grid, nodes in Grids.items():
                                 print(f"Floor {floor}, Grid {grid}, nodes, {nodes}")
 
+                    def ColFloorWise():
+                        # Write to the set for element object floorwise
+                        FloorCenter = []
+                        for ele_id, ele in mesh.elements.items():
+                            if len(ele.nodes) == 2:
+                                dx = ele.orientation.computeOrientation().col(0)
+                                if abs(dx.z) > 0.99:
+                                    # this is a vertical element
+                                    Node1 = ele.nodes[0]
+                                    Node2 = ele.nodes[1]
+                                    z1 = Node1.position.z
+                                    z2 = Node2.position.z
+                                    midZ = (z1 + z2) / 2
+                                    FloorCenter.append(midZ)
+
+                        #Initializing the bucket
+                        FloorCenter = ValueFiltering(FloorCenter, tolerance)
+                        FloorCenter.sort()
+
+                        for floor in FloorCenter:
+                            ColumnFloorwise[floor] = []
+
+
+                        #Writing for the columns
+                        for ele_id, ele in mesh.elements.items():
+                            if len(ele.nodes) == 2:
+                                dx = ele.orientation.computeOrientation().col(0)
+                                if abs(dx.z) > 0.99:
+                                    Node1 = ele.nodes[0]
+                                    Node2 = ele.nodes[1]
+                                    z1 = Node1.position.z
+                                    z2 = Node2.position.z
+                                    midZ = (z1 + z2) / 2
+
+                                    for floor in FloorCenter:
+                                        if CheckTolerance(floor, tolerance, midZ):
+                                            ColumnFloorwise[floor].append(ele)
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -383,8 +434,8 @@ class Worker(QObject):
 
                     FloorNodesExt()
                     GridNodes()
-                    print(XGrids)
-                    print(YGrids)
+                    ColFloorWise()
+
 
                     # Adding and cleaning to get the all super nodes
                     for value in DiaphragmNodes:
@@ -399,19 +450,17 @@ class Worker(QObject):
 
                     All_Nodes_Super = RemoveListDuplicates(All_Nodes_Super)
 
-                    #
-                    # print(XGrids)
-                    # print(YGrids)
 
 
 
-                    return DiaphragmNodes, FloorNodes, XGrids, YGrids
+
+                    return DiaphragmNodes, FloorNodes, XGrids, YGrids, ColumnFloorwise
 
                 process_counter = 1
 
                 # evaluate all results for each stage
                 num_steps = len(all_steps)
-                # num_steps = 20
+                # num_steps = 2
                 for index, step_counter in enumerate(range(num_steps)):
 
                     # get step id and time
@@ -437,7 +486,7 @@ class Worker(QObject):
 
                     if index == 0:
                         mesh = displacement_field.mesh
-                        sortedDiaphragm, FloorNodes, XGrids, YGrids = IDs_Finder(mesh)
+                        sortedDiaphragm, FloorNodes, XGrids, YGrids, ColumnFloorwise = IDs_Finder(mesh)
                         BaseNodes = FloorNodes[0]
 
 
@@ -475,11 +524,89 @@ class Worker(QObject):
 
                         process_counter += 1
 
+
+
                     # This is how you extract data from a nodal result at one or multiple nodes
                     # and compute the relative drift accessing the mesh data
                     # this is a nodal field. The row is the nodal id
 
                     # Structural Responses
+                    def DriftsComp(ColumnFloorwise):
+                        if DiaphragmDrift:
+                            for node_counter in range(len(Drift_sp_target_i)):
+                                i_node_id = Drift_sp_target_i[node_counter]
+                                j_node_id = Drift_sp_target_j[node_counter]
+                                i_row = MpcOdbResultField.node(i_node_id)
+                                j_row = MpcOdbResultField.node(j_node_id)
+                                # this gives the Ux value using both row and column
+                                # the column is a 0-based index, so for Ux it is 0 (1 for Uy and 2 for Uz)
+                                i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
+                                j_Pz = displacement_field.mesh.getNode(j_node_id).position.z
+                                dZ = abs(j_Pz - i_Pz)
+
+                                # Displacement X
+                                i_Ux = displacement_field[i_row, 0]
+                                j_Ux = displacement_field[j_row, 0]
+
+                                # Drift X
+                                driftx = abs(j_Ux - i_Ux) / dZ
+
+                                # Displacement Y
+                                i_Uy = displacement_field[i_row, 1]
+                                j_Uy = displacement_field[j_row, 1]
+
+                                # Drift Y
+                                drifty = (j_Uy - i_Uy) / dZ
+
+                                # Record Keeper
+                                all_driftsX[node_counter + 1].append(driftx)
+                                all_driftsY[node_counter + 1].append(drifty)
+
+
+
+
+                        if DiaphragmDrift != True:
+                            keys_list = list(ColumnFloorwise.keys())
+                            for index, floorCenter in enumerate(keys_list):
+                                Columns = ColumnFloorwise[floorCenter]
+                                ColumnDriftsX= []
+                                ColumnDriftsY= []
+                                for ele in Columns:
+                                    i_node_id = ele.nodes[0].id
+                                    j_node_id = ele.nodes[1].id
+                                    i_row = MpcOdbResultField.node(i_node_id)
+                                    j_row = MpcOdbResultField.node(j_node_id)
+
+                                    i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
+                                    j_Pz = displacement_field.mesh.getNode(j_node_id).position.z
+                                    dZ = abs(j_Pz - i_Pz)
+
+                                    # Displacement X
+                                    i_Ux = displacement_field[i_row, 0]
+                                    j_Ux = displacement_field[j_row, 0]
+
+                                    # Drift X
+                                    driftx = abs(j_Ux - i_Ux) / dZ
+
+                                    # Displacement Y
+                                    i_Uy = displacement_field[i_row, 1]
+                                    j_Uy = displacement_field[j_row, 1]
+
+                                    # Drift Y
+                                    drifty = abs(j_Uy - i_Uy) / dZ
+
+                                    # Record Keeper
+                                    ColumnDriftsX.append(driftx)
+                                    ColumnDriftsY.append(drifty)
+
+                                # Record Keeper
+                                all_driftsX[index + 1].append(max(ColumnDriftsX))
+                                all_driftsY[index + 1].append(max(ColumnDriftsY))
+
+
+
+                    DriftsComp(ColumnFloorwise)
+
                     for node_counter in range(len(Drift_sp_target_i)):
                         i_node_id = Drift_sp_target_i[node_counter]
                         j_node_id = Drift_sp_target_j[node_counter]
@@ -487,9 +614,9 @@ class Worker(QObject):
                         j_row = MpcOdbResultField.node(j_node_id)
                         # this gives the Ux value using both row and column
                         # the column is a 0-based index, so for Ux it is 0 (1 for Uy and 2 for Uz)
-                        i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
-                        j_Pz = displacement_field.mesh.getNode(j_node_id).position.z
-                        dZ = abs(j_Pz - i_Pz)
+                        # i_Pz = displacement_field.mesh.getNode(i_node_id).position.z
+                        # j_Pz = displacement_field.mesh.getNode(j_node_id).position.z
+                        # dZ = abs(j_Pz - i_Pz)
 
                         # Displacement X
                         i_Ux = displacement_field[i_row, 0]
@@ -508,18 +635,18 @@ class Worker(QObject):
                         j_Rz = rotation_field[j_row, 2]
 
                         # Drift X
-                        driftx = (j_Ux - i_Ux) / dZ
+                        # driftx = (j_Ux - i_Ux) / dZ
 
                         # Displacement Y
                         i_Uy = displacement_field[i_row, 1]
                         j_Uy = displacement_field[j_row, 1]
 
                         # Drift Y
-                        drifty = (j_Uy - i_Uy) / dZ
+                        # drifty = (j_Uy - i_Uy) / dZ
 
                         # Record Keeper
-                        all_driftsX[node_counter + 1].append(driftx)
-                        all_driftsY[node_counter + 1].append(drifty)
+                        # all_driftsX[node_counter + 1].append(driftx)
+                        # all_driftsY[node_counter + 1].append(drifty)
 
                         all_dispX[node_counter].append(i_Ux)
                         all_dispY[node_counter].append(i_Uy)
@@ -667,7 +794,7 @@ class Worker(QObject):
                             Uz_Min.append(i_Uz_Min)
                             Uz_Min_Node.append(i_Uz_Min_Node)
 
-
+                print(all_driftsX, all_driftsY)
             Extractor()
 
 
@@ -995,5 +1122,6 @@ for index, line in enumerate(Paths):
 
 
     print(f"Well Executed for Index No {index}")
+
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
