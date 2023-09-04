@@ -927,7 +927,7 @@ else:
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
 FileName = 'Main_Path.txt'
-writerBiasedFor = [ "Fixed", "Soft", "Medium", "Soft"]
+# writerBiasedFor = ["Fixed", "Soft", "Medium", "Hard"]
 Drift_sp_file = open(FileName, 'r')
 
 lines = Drift_sp_file.readlines()
@@ -939,14 +939,12 @@ for index, line in enumerate(lines):
     path = line.strip()
 
     BaseCondition = path.split("\\")[-1]
-    print(line, BaseCondition)
-    if BaseCondition in writerBiasedFor:
-        ResultFile = "Result.txt"
-        ResultPath = os.path.join(path, ResultFile)
-        ResultObj = open(ResultPath, 'w+')
-
-        Paths.append(path)
-        ResultObjects.append(ResultObj)
+    # if BaseCondition == writerBiasedFor:
+    ResultFile = "Result.txt"
+    ResultPath = os.path.join(path, ResultFile)
+    ResultObj = open(ResultPath, 'w+')
+    Paths.append(path)
+    ResultObjects.append(ResultObj)
 
 
 for index, line in enumerate(Paths):
@@ -997,6 +995,5 @@ for index, line in enumerate(Paths):
 
 
     print(f"Well Executed for Index No {index}")
-
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
