@@ -88,6 +88,8 @@ class Worker(QObject):
         SSI_Analysis = ModelPara()
         #Diaphragm Drift = False computes the drift for each of the column and returns its maximum
         DiaphragmDrift = False
+        DiaphragmDisp = True
+
 
 
 
@@ -605,7 +607,65 @@ class Worker(QObject):
 
 
 
+
+                    def DispComp(FloorNodes):
+                        if DiaphragmDisp:
+                            for node_counter in range(len(Drift_sp_target_i)):
+                                i_node_id = Drift_sp_target_i[node_counter]
+                                j_node_id = Drift_sp_target_j[node_counter]
+                                i_row = MpcOdbResultField.node(i_node_id)
+                                j_row = MpcOdbResultField.node(j_node_id)
+
+                                # Displacement X
+                                i_Ux = displacement_field[i_row, 0]
+                                j_Ux = displacement_field[j_row, 0]
+
+
+
+                                # Displacement Y
+                                i_Uy = displacement_field[i_row, 1]
+                                j_Uy = displacement_field[j_row, 1]
+
+                                all_dispX[node_counter].append(i_Ux)
+                                all_dispY[node_counter].append(i_Uy)
+
+
+                                if node_counter == len(Drift_sp_target_i) - 1:
+                                    all_dispX[node_counter + 1].append(j_Ux)
+                                    all_dispY[node_counter + 1].append(j_Uy)
+
+
+                        if DiaphragmDisp == False:
+                            keys_list = list(FloorNodes.keys())
+                            for index, FloorLevel in enumerate(keys_list):
+                                Nodes = FloorNodes[FloorLevel]
+                                FloorDispX = []
+                                FloorDispY = []
+                                for node in Nodes:
+                                    i_node_id = node
+                                    i_row = MpcOdbResultField.node(i_node_id)
+
+                                    # Displacement X
+                                    i_Ux = displacement_field[i_row, 0]
+
+                                    # Displacement Y
+                                    i_Uy = displacement_field[i_row, 1]
+
+                                    # Record Keeper
+                                    FloorDispX.append(i_Ux)
+                                    FloorDispY.append(i_Uy)
+
+                                # Record Keeper
+                                all_dispX[index].append(max(FloorDispX))
+                                all_dispY[index].append(max(FloorDispY))
+
+
+
+
+
                     DriftsComp(ColumnFloorwise)
+                    DispComp(FloorNodes)
+
 
                     for node_counter in range(len(Drift_sp_target_i)):
                         i_node_id = Drift_sp_target_i[node_counter]
@@ -620,7 +680,7 @@ class Worker(QObject):
 
                         # Displacement X
                         i_Ux = displacement_field[i_row, 0]
-                        j_Ux = displacement_field[j_row, 0]
+                        # j_Ux = displacement_field[j_row, 0]
 
                         # Rotation X
                         # i_Rx = rotation_field[i_row, 0]
@@ -638,8 +698,8 @@ class Worker(QObject):
                         # driftx = (j_Ux - i_Ux) / dZ
 
                         # Displacement Y
-                        i_Uy = displacement_field[i_row, 1]
-                        j_Uy = displacement_field[j_row, 1]
+                        # i_Uy = displacement_field[i_row, 1]
+                        # j_Uy = displacement_field[j_row, 1]
 
                         # Drift Y
                         # drifty = (j_Uy - i_Uy) / dZ
@@ -648,8 +708,8 @@ class Worker(QObject):
                         # all_driftsX[node_counter + 1].append(driftx)
                         # all_driftsY[node_counter + 1].append(drifty)
 
-                        all_dispX[node_counter].append(i_Ux)
-                        all_dispY[node_counter].append(i_Uy)
+                        # all_dispX[node_counter].append(i_Ux)
+                        # all_dispY[node_counter].append(i_Uy)
 
 
                         # Rotation_X[node_counter].append(i_Rx)
@@ -658,8 +718,8 @@ class Worker(QObject):
 
 
                         if node_counter == len(Drift_sp_target_i) - 1:
-                            all_dispX[node_counter + 1].append(j_Ux)
-                            all_dispY[node_counter + 1].append(j_Uy)
+                            # all_dispX[node_counter + 1].append(j_Ux)
+                            # all_dispY[node_counter + 1].append(j_Uy)
 
 
                             # Rotation_X[node_counter + 1].append(j_Rx)
