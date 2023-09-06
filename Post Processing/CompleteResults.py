@@ -120,11 +120,13 @@ class Worker(QObject):
 
             def Extractor():
                 # # get document
+                sleep(0.05)
                 doc = App.postDocument()
                 # get first database
                 if len(doc.databases) == 0:
                     raise Exception("You need a database with ID = 1 for this script")
                 db = doc.getDatabase(Index + 1)
+                sleep(0.05)
 
                 # get all the results that we need to reproduce the recorders
                 # you wrote manually in OpenSees.
@@ -461,6 +463,7 @@ class Worker(QObject):
                 process_counter = 1
 
                 # evaluate all results for each stage
+                sleep(0.5)
                 num_steps = len(all_steps)
                 for index, step_counter in enumerate(range(num_steps)):
 
