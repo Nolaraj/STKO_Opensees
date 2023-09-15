@@ -64,7 +64,8 @@ field = U.evaluate(opt)
 mesh = field.mesh
 
 for ele_id, ele in mesh.elements.items():
-    #print(ele_id)
+    print(ele_id, ele.nodes[0].position.x, ele.nodes[0].position.y, ele.nodes[0].position.z)
     if ele_id>8377:
-    	print(ele_id, ele.nodes[0].position.x, ele.nodes[0].position.y, ele.nodes[0].position.z)
+	    pass
+    	
     	#print(ele_id, ele.position.x, ele.position.y, ele.position.z)
