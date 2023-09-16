@@ -1,6 +1,7 @@
-
 import numpy as np
 import h5py
+import matplotlib.pyplot as plt
+
 
 
 def getNodeCoOrdinates(Node):
@@ -17,9 +18,6 @@ def getNodeCoOrdinates(Node):
 
         CoOrdinates = nodesCoOrd[nodeAbsIndex]
         return CoOrdinates[0]
-
-
-
 def getEleNodes(ElementID):
     with h5py.File(filepath, "r") as hdf:
         ls = list(hdf.keys())
@@ -33,11 +31,10 @@ def getEleNodes(ElementID):
         sspbricknode = sspbrick[:, 1:9]
 
         absIndex = np.where(sspbrickid == ElementID)
-        row_index = absIndex[0][0] + 1
+        row_index = absIndex[0][0]
         Nodes = sspbricknode[absIndex][0]
 
         return absIndex, Nodes
-
 def getMidPt(ElementID):
     absIndex, Nodes = getEleNodes(ElementID)
     CoOrdinates = [[], [], []]
@@ -53,9 +50,39 @@ def getMidPt(ElementID):
     MidPoint = [sum(CoOrdinates[0]) / len(CoOrdinates[0]), sum(CoOrdinates[1]) / len(CoOrdinates[1]),
                 sum(CoOrdinates[2]) / len(CoOrdinates[2])]
     return MidPoint
+def get_EleIds(key):
+    with h5py.File(filepath, "r") as hdf:
+        datastage = hdf.get('MODEL_STAGE[2]')
+        results = datastage.get('RESULTS')
+        elements = results.get('ON_ELEMENTS')
+        stress = elements.get(key)
+        stressSoil = stress.get("121-SSPbrick[400:0:1]")
 
-def row_number(ElementID):
-    pass
+        # < KeysViewHDF5['META', 'ID', 'DATA'] >
+        ids = np.array(stressSoil.get("ID"))[:,0]
+        return ids
+
+def get_Elerow(key, element_id):
+    with h5py.File(filepath, "r") as hdf:
+        datastage = hdf.get('MODEL_STAGE[2]')
+        results = datastage.get('RESULTS')
+        elements = results.get('ON_ELEMENTS')
+        stress = elements.get(key)
+        stressSoil = stress.get("121-SSPbrick[400:0:1]")
+
+        # < KeysViewHDF5['META', 'ID', 'DATA'] >
+        ids = np.array(stressSoil.get("ID"))[:, 0]
+        absrow = np.where(ids == element_id)[0][0]
+
+        return absrow
+
+
+def FactorReturn(a , b):
+    Factor = abs(a - b)
+    if Factor == 0:
+        Factor = 1
+    return  Factor
+
 
 
 refcoOrd = [12.5, 12.5, -7]  # Reference CoOrdinates in X, Y and Z format
@@ -63,120 +90,63 @@ Tolerances = [0.5, 2, 5]  # Toleraces: Starting tolerance for check, tolerance i
 component = 5
 filepath = r"D:\Final Analysis\Extras\Nonlinear Analysis\test\L4_Hard_San Fernando.part-0.mpco"
 
-def CheckValue(ele_ids):
-    def ToleranceCheck(ref, tolerance, checkvalue):
-        a = ref + tolerance
-        b = ref - tolerance
-        ab_mid = (a+b)/2
-        Factor = 0
-
-        if checkvalue >= a and checkvalue <= b:
-            Factor = abs(ab_mid - checkvalue)/abs(a-b)
-            return True, Factor
-        elif checkvalue <= a and checkvalue >= b:
-            Factor = abs(ab_mid - checkvalue)/abs(a-b)
-            return True, Factor
-
-        else:
-            return False, Factor
-
-    FinalFactor = []
-    Elements = []
-    tolerance = Tolerances[0]
-    while tolerance <= Tolerances[2]:
-        for ele_id in ele_ids:
-            MidPoint = getMidPt(ele_id)
-            print(ele_id, Elements, tolerance)
-
-            Values = []
-            Factors = []
-            for index, point in enumerate(MidPoint):
-                value, Factor = ToleranceCheck(refcoOrd[index], tolerance, point)
-                Values.append(value)
-                Factors.append(Factor)
-
-            if len(set(Values)) == 1 and Values[0] == True:
-                Elements.append(ele_id)
-                finalVal = 1
-                for val in Factors:
-                    finalVal = finalVal * val
-                FinalFactor.append(finalVal * tolerance)
-
-        if len(Elements) >=1:
-            break
-
-
-        tolerance = tolerance * Tolerances[1]
-    return Elements[FinalFactor.index( min(FinalFactor))]
 
 
 
+#Get Element IDS
+# IDS = get_EleIds("stress")
+#
+# #Get ids and their mid point co ordinates
+# id_CoOrd = {}
+# for id in IDS:
+#     id_CoOrd[id] =  getMidPt(id)
+#
+# #Get nearest node with reference type
+# Factors = []
+#
+# for key, CoOrdinates in id_CoOrd.items():
+#     Factor = FactorReturn(CoOrdinates[0] , refcoOrd[0]) * FactorReturn(CoOrdinates[1] , refcoOrd[1]) * FactorReturn(CoOrdinates[2] , refcoOrd[2])
+#     Factors.append(Factor)
+
+# Index = Factors.index(min(Factors))
+# keylist = list(id_CoOrd.keys())
+# Element = keylist[Index]
+# print(Element)
+Element = 8949
+#Stress
+absrow = get_Elerow("stress", Element)
+stresses = np.empty(0)
+strains = np.empty(0)
 with h5py.File(filepath, "r") as hdf:
-    ls = list(hdf.keys())
     datastage = hdf.get('MODEL_STAGE[2]')
     results = datastage.get('RESULTS')
     elements = results.get('ON_ELEMENTS')
-    stress = elements.get('stress')
-    stressSoil = stress.get("121-SSPbrick[400:0:1]")
 
-    # < KeysViewHDF5['META', 'ID', 'DATA'] >
-    ids = np.array(stressSoil.get("ID"))
+
+
+
+    stress = elements.get("stress")
+    stressSoil = stress.get("121-SSPbrick[400:0:1]")
     stress_data = stressSoil.get("DATA")
     keys = list(stress_data.keys())
-
-
-    # Element = CheckValue(ids)
-    Element = 8560
-    Element_ID = Element
-    print(Element)
-
-    absElementIndex = np.where(ids == Element_ID)
-    stresses = np.empty(0)
-
     for data_index in keys:
         datavalues = np.array(stress_data.get(data_index))
-        value = datavalues[absElementIndex, component]
-        print(value,absElementIndex)
-        print(value[0][0])
-
-        stresses = np.append(stresses, value[0][0])
+        value = datavalues[absrow, component]
+        stresses = np.append(stresses, value)
 
 
-    strains = np.empty(0)
-    elements = results.get('ON_ELEMENTS')
-    strain = elements.get('strain')
-    strainSoil = strain.get("121-SSPbrick[400:0:1]")
-    ids = np.array(strainSoil.get("ID"))
-    strain_data = strainSoil.get("DATA")
-    keys = list(strain_data.keys())
-    absElementIndex = np.where(ids == Element_ID)
-    print(absElementIndex)
-    strains = np.empty(0)
+    stress = elements.get("strain")
+    stressSoil = stress.get("121-SSPbrick[400:0:1]")
+    stress_data = stressSoil.get("DATA")
+    keys = list(stress_data.keys())
     for data_index in keys:
-        datavalues = np.array(strain_data.get(data_index))
-        value = datavalues[absElementIndex, component]
-        strains = np.append(strains, value[0][0])
-
-
-
-with open('data.txt', 'w') as file:
-    # Write the headings
-    file.write("Stress\tStrain\n")
-
-    # Write the data
-    for i in range(len(stresses)):
-        file.write(f"{stresses[i]}\t{strains[i]}\n")
-
-print("Data written to 'data.txt'")
+        datavalues = np.array(stress_data.get(data_index))
+        value = datavalues[absrow, component]
+        strains = np.append(strains, value)
 
 
 
 
-print(stresses, strains)
-import numpy as np
-import matplotlib.pyplot as plt
-
-# Sample data (replace these with your own arrays)
 
 # Create a basic line plot
 plt.plot(strains, stresses)
